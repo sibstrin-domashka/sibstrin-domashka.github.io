@@ -14,6 +14,7 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="app-config.js"></script>
 <script src="themes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -78,6 +79,15 @@ input::placeholder{color:rgba(218,241,222,.4)}
 .consent input{width:18px;height:18px;flex-shrink:0;margin-top:1px;accent-color:#8EB69B}
 .consent a,.legal a{color:#9FE3BE}
 .legal{margin-top:18px;text-align:center;font-size:.76rem;color:#8EB69B;line-height:1.6}
+.role-tabs{display:flex;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(142,182,155,.22);border-radius:12px;padding:4px;margin-bottom:16px}
+.role-tabs button{flex:1;padding:10px 6px;border:none;border-radius:9px;background:transparent;color:#A8C7BC;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
+.role-tabs button.on{background:#8EB69B;color:#051F20}
+.switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:#9FE3BE;cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
+.first-box{background:rgba(233,165,74,.12);border:1px solid rgba(233,165,74,.4);border-radius:12px;padding:12px 14px;margin:10px 0;line-height:1.5;font-size:.9rem}
+.qr-wrap{background:#fff;border-radius:12px;padding:10px;width:180px;margin:12px auto}
+.qr-wrap svg{display:block;width:100%;height:auto}
+.share-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.share-row button{flex:1 1 auto;padding:10px;border-radius:10px;border:1px solid rgba(142,182,155,.35);background:rgba(255,255,255,.04);color:#DAF1DE;font:inherit;font-weight:600;font-size:.85rem;cursor:pointer}
 .notice{background:rgba(159,216,179,.12);color:#9FD8B3;border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:12px;line-height:1.4}
 </style>
 </head>
@@ -87,6 +97,36 @@ input::placeholder{color:rgba(218,241,222,.4)}
   <div class="logo">📚 Домашка</div>
   <div class="sub">Расписание и домашка твоей группы</div>
   <div class="notice" id="deletedNote" style="display:none">Аккаунт и данные удалены. Если захочешь вернуться — просто зарегистрируйся снова.</div>
+
+  <div class="role-tabs" id="roleTabs">
+    <button class="on" data-role="student">Я студент</button>
+    <button data-role="teacher">Я преподаватель</button>
+  </div>
+
+  <!-- ======== Преподаватель: вход по ФИО и коду ======== -->
+  <div id="tLoginScreen" class="screen">
+    <div class="hint" style="margin-top:0">Введите ФИО и код доступа из письма.</div>
+    <label>Фамилия Имя Отчество</label>
+    <input type="text" id="tName" placeholder="Иванов Иван Иванович" autocomplete="name">
+    <label>Код доступа</label>
+    <input type="text" id="tCode" placeholder="Например: A1B2C3" autocapitalize="characters" autocomplete="one-time-code">
+    <button class="btn" id="tLoginBtn">Войти</button>
+    <div class="msg" id="tMsg"></div>
+    <button class="switch" id="toReq">Нет кода? Оставить заявку на доступ</button>
+  </div>
+  <div id="tReqScreen" class="screen">
+    <div class="invite-note" id="reqInvite" style="display:none"></div>
+    <div class="hint" style="margin-top:0">Оставьте заявку — код входа придёт на указанную почту, обычно в течение дня.</div>
+    <label>Фамилия Имя Отчество</label>
+    <input type="text" id="reqName" placeholder="Иванов Иван Иванович" autocomplete="name">
+    <label>Рабочая почта</label>
+    <input type="email" id="reqEmail" placeholder="ivanov@sibstrin.ru" autocomplete="email">
+    <label>Предметы (необязательно)</label>
+    <input type="text" id="reqSubj" placeholder="История России">
+    <button class="btn" id="reqBtn">Отправить заявку</button>
+    <div class="msg" id="reqMsg"></div>
+    <button class="switch" id="toTLogin">У меня уже есть код → войти</button>
+  </div>
 
   <div id="joinScreen" class="screen active">
     <div class="invite-note" id="inviteNote" style="display:none"></div>
@@ -121,6 +161,16 @@ input::placeholder{color:rgba(218,241,222,.4)}
 
   <div id="doneScreen" class="screen">
     <p style="line-height:1.5">Готово! Ты в группе <b id="doneGroup"></b>.</p>
+    <div id="firstBox" style="display:none">
+      <div class="first-box">🎉 <b>Ты первый в этой группе!</b> Первый месяц — бесплатно для всей группы. Пригласи одногруппников: отправь ссылку в чат группы или покажи QR-код.</div>
+      <div class="qr-wrap" id="inviteQr"></div>
+      <div class="ref-link" id="inviteLinkText"></div>
+      <div class="share-row">
+        <button id="invShare">Поделиться</button><button id="invTg">Telegram</button><button id="invCopy">Копировать</button>
+      </div>
+      <p class="hint">Новенькие попадут в группу, только когда кто-то из уже вступивших их подтвердит — так в группу не попадут чужие.</p>
+      <button class="btn" id="goAppBtn">Перейти к расписанию</button>
+    </div>
 
     <div class="ref-box" style="display:none">
       <div style="font-size:.85rem;font-weight:600;color:var(--blue-dark)">Приглашай одногруппников — за каждого начисляются очки</div>
@@ -305,7 +355,14 @@ input::placeholder{color:rgba(218,241,222,.4)}
       document.getElementById("refLink").textContent = link;
 
       showScreen("doneScreen");
-      setTimeout(goToApp, 1800);
+      document.getElementById("roleTabs").style.display = "none";
+      var mem = await sb.rpc("my_membership");
+      var m0 = (!mem.error && mem.data && mem.data[0]) || null;
+      if(m0 && m0.is_starosta && m0.join_code){
+        showFirstMember(m0);
+      } else {
+        setTimeout(goToApp, 1800);
+      }
     } catch(e){
       showPassMsg("Что-то пошло не так: " + e.message);
     } finally {
@@ -322,6 +379,82 @@ input::placeholder{color:rgba(218,241,222,.4)}
     });
   };
 
+  function showFirstMember(m0){
+    var link = location.href.replace(/[^\/]*([?#].*)?$/, "") + "auth.html?g=" + encodeURIComponent(m0.join_code);
+    document.getElementById("firstBox").style.display = "block";
+    var hintP = document.querySelector("#doneScreen > p.hint"); if(hintP) hintP.style.display = "none";
+    document.getElementById("inviteLinkText").textContent = link;
+    try{ var q = qrcode(0, "M"); q.addData(link); q.make(); document.getElementById("inviteQr").innerHTML = q.createSvgTag({ cellSize:5, margin:1, scalable:true }); }
+    catch(e){ document.getElementById("inviteQr").style.display = "none"; }
+    var text = "Присоединяйся к группе " + (m0.group_name || "") + " в «Домашке»: расписание, домашка и темы докладов в одном месте.";
+    var sh = document.getElementById("invShare");
+    if(!navigator.share) sh.style.display = "none";
+    sh.onclick = function(){ navigator.share({ title:"Домашка", text:text, url:link }).catch(function(){}); };
+    document.getElementById("invTg").onclick = function(){ window.open("https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent(text), "_blank", "noopener"); };
+    document.getElementById("invCopy").onclick = function(){ var b = this; navigator.clipboard.writeText(link).then(function(){ b.textContent = "Скопировано!"; setTimeout(function(){ b.textContent = "Копировать"; }, 1500); }); };
+    document.getElementById("goAppBtn").onclick = goToApp;
+  }
+
+  /* ================= Преподаватель ================= */
+  var tsb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storageKey: "domashka-teacher-auth", persistSession: true, autoRefreshToken: true }
+  });
+  var qp = new URLSearchParams(location.search);
+  var inviteGroup = (qp.get("invite") || "").replace(/[^0-9А-Яа-яЁё()]/g, "").slice(0, 20);
+  function setRole(role){
+    document.querySelectorAll("#roleTabs button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-role") === role); });
+    showScreen(role === "teacher" ? (inviteGroup ? "tReqScreen" : "tLoginScreen") : "joinScreen");
+    document.querySelector(".sub").textContent = role === "teacher" ? "Задания, журнал и посещаемость ваших групп" : "Расписание и домашка твоей группы";
+  }
+  document.querySelectorAll("#roleTabs button").forEach(function(b){ b.onclick = function(){ setRole(b.getAttribute("data-role")); }; });
+  document.getElementById("toReq").onclick = function(){ showScreen("tReqScreen"); };
+  document.getElementById("toTLogin").onclick = function(){ showScreen("tLoginScreen"); };
+  if(inviteGroup){
+    var ri = document.getElementById("reqInvite");
+    ri.textContent = "Вас пригласили студенты группы " + inviteGroup + ". «Домашка» — расписание, задания, литература и электронный журнал в одном приложении.";
+    ri.style.display = "block";
+  }
+  function tMsg(id, text, ok){ var m = document.getElementById(id); m.textContent = text; m.className = "msg " + (ok ? "ok" : "err"); }
+  function goTeacherApp(){
+    var nx = (qp.get("next") || "").replace(/[^a-z=]/g, "");
+    location.href = "teacher-app.html" + (/^settings=[a-z]+$/.test(nx) ? "?" + nx : "");
+  }
+  document.getElementById("tLoginBtn").onclick = async function(){
+    var name = document.getElementById("tName").value.trim();
+    var code = document.getElementById("tCode").value.trim().toUpperCase();
+    if(!name || name.split(/\s+/).length < 2){ tMsg("tMsg", "Введите полное ФИО"); return; }
+    if(!code){ tMsg("tMsg", "Введите код доступа"); return; }
+    var btn = this; btn.disabled = true; btn.textContent = "Проверяем...";
+    try{
+      var em = await tsb.rpc("teacher_login_email", { p_full_name: name, p_code: code });
+      if(em.error){ tMsg("tMsg", "Не нашли такое ФИО с этим кодом. Проверьте данные из письма или оставьте заявку."); return; }
+      var si = await tsb.auth.signInWithPassword({ email: em.data, password: code });
+      if(si.error){
+        var su = await tsb.auth.signUp({ email: em.data, password: code });
+        if(su.error){ tMsg("tMsg", "Не получилось войти: " + su.error.message); return; }
+      }
+      var j = await tsb.rpc("join_teacher_by_roster", { p_full_name: name, p_code: code });
+      if(j.error){ tMsg("tMsg", "Не нашли такое ФИО с этим кодом. Проверьте данные из письма."); return; }
+      try{ localStorage.setItem("domashka_teacher_name", name); }catch(e){}
+      goTeacherApp();
+    }catch(e){ tMsg("tMsg", "Что-то пошло не так: " + e.message); }
+    finally{ btn.disabled = false; btn.textContent = "Войти"; }
+  };
+  document.getElementById("reqBtn").onclick = async function(){
+    var btn = this;
+    var name = document.getElementById("reqName").value.trim().replace(/\s+/g, " ");
+    var email = document.getElementById("reqEmail").value.trim();
+    if(name.split(" ").length < 2){ tMsg("reqMsg", "Укажите ФИО полностью"); return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ tMsg("reqMsg", "Проверьте почту"); return; }
+    btn.disabled = true;
+    var r = await tsb.from("teacher_requests").insert({ full_name:name, email:email, subjects:document.getElementById("reqSubj").value.trim() || null, invited_by_group:inviteGroup || null });
+    btn.disabled = false;
+    if(r.error){ tMsg("reqMsg", "Не отправилось: " + r.error.message); return; }
+    tMsg("reqMsg", "Заявка отправлена! Код входа придёт на " + email + ".", true);
+    btn.style.display = "none";
+  };
+  if(qp.get("role") === "teacher" || inviteGroup) setRole("teacher");
+
   function goToApp(){
     var nx = (new URLSearchParams(window.location.search).get("next") || "").replace(/[^a-z=]/g, "");
     window.location.href = "index_3_updated.html" + (/^settings=[a-z]+$/.test(nx) ? "?" + nx : "");
@@ -332,6 +465,14 @@ input::placeholder{color:rgba(218,241,222,.4)}
   (async function(){
     await loadGroups();
     await applyInvite();
+    if(qp.get("role") === "teacher" || inviteGroup){
+      var ts = await tsb.auth.getSession();
+      if(ts.data.session){
+        var tp = await tsb.from("teacher_profiles").select("id").eq("id", ts.data.session.user.id).maybeSingle();
+        if(tp.data){ goTeacherApp(); return; }
+      }
+      return;
+    }
     var sess = await sb.auth.getSession();
     var session = sess.data.session;
     if(session){

@@ -95,6 +95,21 @@ header{
 .hw-btn:active{background:rgba(79,209,165,.1)}
 .hw-btn.att-btn{margin-top:8px;border-color:var(--border);color:var(--text-primary)}
 header{padding-top:calc(18px + env(safe-area-inset-top,0px)) !important}
+.lesson-card.tap{display:flex;gap:14px;align-items:flex-start;cursor:pointer;border-left:4px solid var(--border);transition:transform .08s ease}
+.lesson-card.tap.has-hw{border-left-color:var(--accent)}
+.lesson-card.tap:active{transform:scale(.99)}
+.lc-time{flex-shrink:0;width:58px;display:flex;flex-direction:column;line-height:1.25}
+.lc-time b{font-size:1rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.lc-time span{font-size:.8rem;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.lc-time small{font-size:.72rem;color:var(--text-secondary);margin-top:6px}
+.lc-body{flex:1;min-width:0}
+.lc-body .lesson-subject{margin-top:0}
+.lc-body .hw-status{margin-top:8px}
+.lc-chev{align-self:center;color:var(--text-secondary);font-size:1.5rem;line-height:1}
+.lm-actions{display:flex;gap:8px;margin:0 0 12px}
+.lm-act{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text-primary);font:inherit;font-weight:600;font-size:.875rem;cursor:pointer}
+.lm-act svg{width:18px;height:18px;flex-shrink:0}
+.lm-act.primary{background:var(--accent);border-color:var(--accent);color:#052421}
 .hw-btn.qr-btn{margin-top:8px;background:var(--accent);color:#052421;border-color:var(--accent);font-weight:700}
 .qr-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px auto 0;max-width:340px}
 .qr-bar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
@@ -411,6 +426,10 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
   <div class="modal">
     <h3 id="hwModalTitle">Домашнее задание</h3>
     <div class="modal-sub" id="hwModalSub">—</div>
+    <div class="lm-actions">
+      <button class="lm-act primary" id="lmQr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17.5 21H21v-3.5"/></svg><span>QR-отметка</span></button>
+      <button class="lm-act" id="lmChg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>Отмена / замена</span></button>
+    </div>
     <div class="mtabs">
       <button class="mtab on" data-pane="paneHw">Задание</button>
       <button class="mtab" data-pane="paneAtt">Отметки и оценки</button>
@@ -802,30 +821,20 @@ function renderDay(){
     var hasHw = !!c.hw;
     var timeLabel = "Пара " + (c.slot_index + 1);
 
+    var tm = (TIMES[c.slot_index] || "").split("–");
+    card.className = "lesson-card tap" + (hasHw ? " has-hw" : "");
+    card.setAttribute("role", "button"); card.tabIndex = 0;
     card.innerHTML =
-      '<div class="lesson-top">' +
-        '<div>' +
-          '<div class="lesson-time">' + timeLabel + '</div>' +
-          '<div class="lesson-subject">' + escapeHtml(c.subject || "Предмет") + '</div>' +
-          '<div class="lesson-meta">' + escapeHtml(c.groupLabel) + (c.room ? ' · ' + escapeHtml(c.room) : '') + '</div>' +
-        '</div>' +
+      '<div class="lc-time"><b>' + escapeHtml(tm[0] || "") + '</b><span>' + escapeHtml(tm[1] || "") + '</span><small>' + (c.slot_index + 1) + ' пара</small></div>' +
+      '<div class="lc-body">' +
+        '<div class="lesson-subject">' + escapeHtml(c.subject || "Предмет") + '</div>' +
+        '<div class="lesson-meta">' + escapeHtml(c.groupLabel) + (c.room ? ' · ' + escapeHtml(c.room) : '') + '</div>' +
+        changeBadgeHtml(c) +
+        '<div class="hw-status ' + (hasHw ? "done" : "pending") + '">' + (hasHw ? "✓ Задание добавлено" : "Задание не добавлено") + '</div>' +
       '</div>' +
-      changeBadgeHtml(c) +
-      '<div class="hw-status ' + (hasHw ? "done" : "pending") + '">' +
-        (hasHw ? "✓ Задание добавлено" : "Задание ещё не добавлено") +
-      '</div>' +
-      '<button class="hw-btn">' + (hasHw ? "Изменить задание" : "Добавить задание") + '</button>' +
-      '<button class="hw-btn qr-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17.5 21H21v-3.5"/></svg><span>QR-отметка на паре</span></button>' +
-      '<button class="hw-btn att-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Отметки и оценки</span></button>' +
-      '<button class="hw-btn att-btn chg-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>Отмена / замена</span></button>';
-
-    card.querySelector(".hw-btn").onclick = function(){ openHwModal(c); };
-    card.querySelector(".att-btn").onclick = function(){ openHwModal(c, "paneAtt"); };
-    card.querySelector(".chg-btn").onclick = function(){ openChange(c); };
-    card.querySelector(".qr-btn").onclick = function(){
-      openHwModal(c, "paneAtt");
-      setTimeout(function(){ startQr(c.rows, document.getElementById("attDate").value); }, 350);
-    };
+      '<div class="lc-chev" aria-hidden="true">›</div>';
+    card.onclick = function(){ openHwModal(c); };
+    card.onkeydown = function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openHwModal(c); } };
     wrap.appendChild(card);
   });
 }
@@ -1411,6 +1420,18 @@ async function startQr(rows, date){
   qr.timer = setInterval(drawQr, 1000);
   qr.poll = setInterval(pollQr, 3000);
 }
+document.getElementById("lmQr").onclick = function(){
+  if(!activeCard) return;
+  var c = activeCard;
+  var t = document.querySelector('.mtab[data-pane="paneAtt"]'); if(t) t.click();
+  setTimeout(function(){ startQr(c.rows, document.getElementById("attDate").value || isoDate(new Date())); }, 300);
+};
+document.getElementById("lmChg").onclick = function(){
+  if(!activeCard) return;
+  var c = activeCard;
+  document.getElementById("hwOverlay").classList.remove("active");
+  openChange(c);
+};
 document.getElementById("qrStartBtn").onclick = function(){
   if(!activeCard) return;
   startQr(activeCard.rows, document.getElementById("attDate").value);

@@ -334,7 +334,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       if(g.error){ alertBox("Ошибка: "+g.error.message); b.disabled=false; return; }
       var t=(g.data||[])[0];
       var site=location.href.replace(/[^\/]*([?#].*)?$/,"");
-      var body="Здравствуйте, "+t.full_name+"!\n\nВаш доступ к «Домашке» готов.\n\nВход: "+site+"teacher.html\nФИО: "+t.full_name+"\nКод доступа: "+t.code+"\n\nЕсли возникнут вопросы — просто ответьте на это письмо.\n\nКоманда «Домашки»";
+      var body="Здравствуйте, "+t.full_name+"!\n\nВаш доступ к «Домашке» готов.\n\nВход: "+site+"auth.html?role=teacher\nФИО: "+t.full_name+"\nКод доступа: "+t.code+"\n\nЕсли возникнут вопросы — просто ответьте на это письмо.\n\nКоманда «Домашки»";
       location.href="mailto:"+encodeURIComponent(t.email)+"?subject="+encodeURIComponent("Ваш доступ к «Домашке»")+"&body="+encodeURIComponent(body);
       loadTeacherRequests();
     }; });
