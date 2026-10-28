@@ -1297,6 +1297,17 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     var res=await sb.from("literature_books").select("id,subject,title,storage_path,created_at").eq("group_id", myGroupId).order("subject");
     if(res.error){ el.innerHTML='<div class="dv-empty-msg">Ошибка: '+esc(res.error.message)+'</div>'; return; }
     literatureBooks=res.data||[];
+    // Literature the teachers published for this group.
+    var tl=await sb.from("teacher_literature").select("id,subject,title,author,url,file,course,semester,teacher_name,created_at").order("created_at",{ascending:false});
+    if(!tl.error){
+      (tl.data||[]).forEach(function(b){
+        literatureBooks.push({
+          id:"t-"+b.id, subject:b.subject, title:b.title+(b.author?" — "+b.author:""),
+          meta:[b.course?b.course+" курс":"", b.semester?b.semester+" семестр":"", b.teacher_name||""].filter(Boolean).join(" · "),
+          url:b.url, fileUrl:b.file&&b.file.url, fileName:b.file&&b.file.name
+        });
+      });
+    }
     renderLiteratureScreen();
   }
 
@@ -1305,7 +1316,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     var h='<div class="lit-header"><h2>📚 Литература</h2>';
     h+='<input id="litSearch" class="lit-search" placeholder="Поиск по предмету или названию...">';
     h+='</div>';
-    if(myIsOwner) h+='<div style="max-width:700px;margin:0 auto 14px"><button class="btn-blue" id="addBookBtn" style="width:100%">+ Добавить книгу</button></div>';
+    // Literature is published by the teachers themselves (teacher page -> «Литература»).
     h+='<div id="litList"></div>';
     el.innerHTML=h;
     renderLitList("");
@@ -1317,7 +1328,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   function renderLitList(query){
     var list=document.getElementById("litList");
     if(!literatureBooks.length){
-      list.innerHTML='<div class="dv-empty-msg">Пока ничего нет'+(myIsOwner?' — нажми «Добавить книгу»':'')+'.</div>';
+      list.innerHTML='<div class="dv-empty-msg">Пока ничего нет — литературу добавляют преподаватели.</div>';
       return;
     }
     var filtered=literatureBooks.filter(function(b){
@@ -1334,7 +1345,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       h+='<div class="lit-subject-head"><span>'+esc(subj)+'</span><span class="lit-count">'+bySubject[subj].length+'</span></div>';
       h+='<div class="lit-books" style="display:'+(query?'block':'none')+'">';
       bySubject[subj].forEach(function(b){
-        h+='<div class="lit-book" data-id="'+b.id+'"><span>'+esc(b.title)+'</span><span class="lit-open">Открыть →</span></div>';
+        h+='<div class="lit-book" data-id="'+b.id+'"><span>'+esc(b.title)+(b.meta?'<small style="display:block;color:var(--text-secondary);font-size:.74rem;margin-top:2px">'+esc(b.meta)+'</small>':'')+'</span><span class="lit-open">Открыть →</span></div>';
       });
       h+='</div></div>';
     });
@@ -1352,6 +1363,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
         var id=this.getAttribute("data-id");
         var book=literatureBooks.filter(function(b){ return b.id===id; })[0];
         if(!book || !sb) return;
+        if(book.fileUrl || book.url){ window.open(book.fileUrl || book.url, "_blank"); return; }
         var signed=await sb.storage.from("literature").createSignedUrl(book.storage_path, 3600);
         if(signed.error){ toast("Не удалось открыть файл"); return; }
         window.open(signed.data.signedUrl, "_blank");

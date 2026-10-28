@@ -154,6 +154,21 @@ td.day.current-day{background:rgba(224,138,60,.16);border-left:3px solid #E08A3C
 td.slot.current-day{background:rgba(224,138,60,.08)}
 td.slot.current-slot{box-shadow:inset 0 0 0 2px #E08A3C}
 
+/* ---------- Stream / check lists / literature ---------- */
+select{width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:.95rem;background:var(--bg-card-2);color:var(--text-primary);font-family:inherit}
+.check-list{display:flex;flex-direction:column;gap:6px}
+.check-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-size:.85rem;cursor:pointer}
+label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
+.check-row input{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)}
+.check-row .sub{color:var(--text-secondary);font-size:.75rem;display:block}
+.check-row .warn{color:var(--warn);font-size:.72rem;display:block}
+.lit-item{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+.lit-item .t{font-weight:700}
+.lit-item .m{color:var(--text-secondary);font-size:.8rem;margin-top:4px;line-height:1.4}
+.lit-item .a{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.lit-item .a a,.lit-item .a button{font-size:.8rem;color:var(--accent);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;cursor:pointer}
+.lit-item .a button.del{color:var(--danger)}
+
 /* ---------- Topics students took ---------- */
 .topics-list{display:flex;flex-direction:column;gap:6px}
 .topic-row{display:flex;justify-content:space-between;gap:10px;background:rgba(79,209,165,.08);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.85rem}
@@ -192,6 +207,7 @@ td.slot.current-slot{box-shadow:inset 0 0 0 2px #E08A3C}
   <div class="tabs">
     <button class="tab on" id="tabDay">День</button>
     <button class="tab" id="tabWeeks">2 недели</button>
+    <button class="tab" id="tabLit">Литература</button>
   </div>
 
   <div id="dayView" style="max-width:520px;margin:0 auto;padding:0 16px">
@@ -208,6 +224,41 @@ td.slot.current-slot{box-shadow:inset 0 0 0 2px #E08A3C}
   </div>
 
   <div id="weeksView" style="display:none"></div>
+
+  <div id="litView" style="display:none;max-width:620px;margin:16px auto 0;padding:0 16px">
+    <button class="btn" id="litAddBtn" style="width:100%">+ Добавить литературу</button>
+    <div id="litList" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- ===================== LITERATURE MODAL ===================== -->
+<div class="overlay" id="litOverlay">
+  <div class="modal">
+    <h3>Новая литература</h3>
+    <div class="modal-sub">Студенты выбранных групп увидят её в разделе «Литература».</div>
+    <label>Предмет</label>
+    <select id="litSubject"></select>
+    <label>Название</label>
+    <input id="litTitle" placeholder="История России: учебник">
+    <label>Автор (необязательно)</label>
+    <input id="litAuthor" placeholder="Иванов И. И.">
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label>Курс</label><select id="litCourse"><option value="1">1 курс</option><option value="2">2 курс</option><option value="3">3 курс</option><option value="4">4 курс</option><option value="5">5 курс</option><option value="6">6 курс</option></select></div>
+      <div style="flex:1"><label>Семестр</label><select id="litSem"><option value="1">1 семестр</option><option value="2">2 семестр</option></select></div>
+    </div>
+    <label>Для каких групп</label>
+    <div id="litGroups" class="check-list"></div>
+    <label>Ссылка (необязательно)</label>
+    <input id="litUrl" placeholder="https://...">
+    <label>Файл (необязательно, до 20 МБ)</label>
+    <button type="button" class="btn btn-outline attach-btn" id="litFileBtn" style="width:100%">📎 Выбрать файл</button>
+    <input type="file" id="litFileInput" style="display:none">
+    <div id="litFileName" class="modal-sub" style="margin:6px 0 0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="litCancelBtn" style="flex:1">Отмена</button>
+      <button class="btn" id="litSaveBtn" style="flex:2">Добавить</button>
+    </div>
+  </div>
 </div>
 
 <!-- ===================== HOMEWORK MODAL ===================== -->
@@ -231,10 +282,15 @@ td.slot.current-slot{box-shadow:inset 0 0 0 2px #E08A3C}
     </div>
     <label>Сдать до</label>
     <input type="date" id="hwDue">
+    <div id="streamWrap" style="display:none">
+      <label>Поток — то же задание другим группам</label>
+      <div id="streamList" class="check-list"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" id="hwCancelBtn" style="flex:1">Отмена</button>
-      <button class="btn" id="hwSaveBtn" style="flex:2">Сохранить</button>
+      <button class="btn" id="hwSaveBtn" style="flex:2">Сохранить для группы</button>
     </div>
+    <button class="btn" id="hwSaveStreamBtn" style="width:100%;margin-top:10px;display:none">Сохранить для потока</button>
   </div>
 </div>
 
@@ -295,7 +351,7 @@ async function loadTeacherProfile(){
 
   await loadLessons();
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
-  try{ if(localStorage.getItem("domashka_teacher_view") === "weeks") currentView = "weeks"; }catch(e){}
+  try{ var sv = localStorage.getItem("domashka_teacher_view"); if(sv === "weeks" || sv === "lit") currentView = sv; }catch(e){}
   setView(currentView);
 }
 
@@ -464,15 +520,20 @@ function setView(v){
   try{ localStorage.setItem("domashka_teacher_view", v); }catch(e){}
   document.getElementById("tabDay").classList.toggle("on", v === "day");
   document.getElementById("tabWeeks").classList.toggle("on", v === "weeks");
+  document.getElementById("tabLit").classList.toggle("on", v === "lit");
+  document.getElementById("litView").style.display = v === "lit" ? "block" : "none";
   document.getElementById("dayView").style.display = v === "day" ? "block" : "none";
   document.getElementById("weeksView").style.display = v === "weeks" ? "block" : "none";
   renderAll();
 }
 document.getElementById("tabDay").onclick = function(){ setView("day"); };
 document.getElementById("tabWeeks").onclick = function(){ setView("weeks"); };
+document.getElementById("tabLit").onclick = function(){ setView("lit"); };
 
 function renderAll(){
-  if(currentView === "weeks") renderWeeks(); else renderDay();
+  if(currentView === "weeks") renderWeeks();
+  else if(currentView === "lit") loadLiterature();
+  else renderDay();
 }
 
 // Index of the lesson slot happening right now (or -1).
@@ -618,6 +679,96 @@ async function uploadOne(f){
   return { name: f.name, url: pub.data.publicUrl, type: f.type || "", size: f.size, path: key };
 }
 
+/* ---------------- Streams (поток) ----------------
+   A stream = groups that sit together in a shared lesson of the same subject
+   with this teacher (e.g. the "121, 122, 124, 128 гр." lecture). "Сохранить
+   для потока" writes the same homework to each of those groups' own lesson
+   of that subject - the nearest one on or after this lesson, same 2-week cycle. */
+function normSubj(x){ return String(x || "").trim().toLowerCase(); }
+function groupNumsOf(l){
+  var out = [];
+  String(l.groups_label || "").replace(/\(\d+\)/g, "").replace(/((?:\d{2,4}[а-яё]?\s*,\s*)*\d{2,4}[а-яё]?)\s*гр/gi, function(_, g){
+    g.split(",").forEach(function(n){ n = n.trim(); if(n && out.indexOf(n) === -1) out.push(n); });
+  });
+  var own = l.groups && l.groups.name;
+  if(own && out.indexOf(own) === -1) out.push(own);
+  return out;
+}
+function streamGroups(subject, seedGroups){
+  var subj = normSubj(subject), set = {};
+  seedGroups.forEach(function(g){ set[g] = true; });
+  var grew = true;
+  while(grew){
+    grew = false;
+    lessonsCache.forEach(function(l){
+      if(normSubj(l.subject) !== subj) return;
+      var gs = groupNumsOf(l);
+      if(gs.length < 2 || !gs.some(function(g){ return set[g]; })) return;
+      gs.forEach(function(g){ if(!set[g]){ set[g] = true; grew = true; } });
+    });
+  }
+  return Object.keys(set).sort(function(a, b){ return a.localeCompare(b, "ru", { numeric: true }); });
+}
+function absOf(l){ return weekDayToAbs(l.week_number, l.day_index) * 10 + l.slot_index; }
+// For each other group of the stream: its nearest lesson of this subject on/after this one.
+function streamTargets(c){
+  var first = c.rows[0];
+  var covered = {};
+  c.rows.forEach(function(r){ if(r.groups && r.groups.name) covered[r.groups.name] = true; });
+  var groups = streamGroups(c.subject, Object.keys(covered).concat(groupNumsOf(first)));
+  var base = absOf(first), span = 14 * 10;
+  var out = [];
+  groups.forEach(function(g){
+    if(covered[g]) return;
+    var cands = lessonsCache.filter(function(l){ return l.groups && l.groups.name === g && normSubj(l.subject) === normSubj(c.subject); });
+    if(!cands.length) return;
+    // Prefer the same kind of lesson (practice -> practice, lecture -> lecture).
+    var kind = function(l){ return (String(l.room || "").match(/^[А-Яа-яЁё]+/) || [""])[0].toLowerCase(); };
+    var same = cands.filter(function(l){ return kind(l) === kind(first); });
+    if(same.length) cands = same;
+    cands.sort(function(a, b){ return ((absOf(a) - base + span) % span) - ((absOf(b) - base + span) % span); });
+    out.push({ group: g, row: cands[0] });
+  });
+  return out;
+}
+// Date of l's next occurrence after the base lesson (the 2-week cycle repeats,
+// so the stored lesson_date may be the previous cycle's).
+function lessonWhen(l, base){
+  var d = null;
+  var bd = base && dateFor(base.week_number, base.day_index);
+  if(bd){
+    var diff = (weekDayToAbs(l.week_number, l.day_index) - weekDayToAbs(base.week_number, base.day_index) + 14) % 14;
+    if(diff === 0 && l.slot_index <= base.slot_index) diff = 14;
+    d = new Date(bd); d.setDate(d.getDate() + diff);
+  } else d = dateFor(l.week_number, l.day_index);
+  return DAY_SHORT[l.day_index] + (d ? " " + d.getDate() + "." + String(d.getMonth() + 1).padStart(2, "0") : "") + " · пара " + (l.slot_index + 1);
+}
+var streamTargetList = [];
+function renderStream(c){
+  streamTargetList = streamTargets(c);
+  var wrap = document.getElementById("streamWrap"), list = document.getElementById("streamList");
+  var btn = document.getElementById("hwSaveStreamBtn");
+  list.innerHTML = "";
+  if(!streamTargetList.length){ wrap.style.display = "none"; btn.style.display = "none"; return; }
+  streamTargetList.forEach(function(t, i){
+    var h = Array.isArray(t.row.homework) ? t.row.homework[0] : t.row.homework;
+    var has = h && ((h.description && h.description.trim()) || (Array.isArray(h.attachments) && h.attachments.length));
+    var el = document.createElement("label");
+    el.className = "check-row";
+    el.innerHTML = '<input type="checkbox" checked data-i="' + i + '"><span><b>' + escapeHtml(t.group) + ' гр.</b>' +
+      '<span class="sub">' + escapeHtml(lessonWhen(t.row, c.rows[0])) + (t.row.room ? " · " + escapeHtml(t.row.room) : "") + '</span>' +
+      (has ? '<span class="warn">уже есть задание — заменится</span>' : '') + '</span>';
+    list.appendChild(el);
+  });
+  wrap.style.display = "block";
+  btn.style.display = "block";
+  btn.textContent = "Сохранить для потока (" + (c.rows.length + streamTargetList.length) + " гр.)";
+  list.onchange = function(){
+    var n = list.querySelectorAll("input:checked").length;
+    btn.textContent = "Сохранить для потока (" + (c.rows.length + n) + " гр.)";
+  };
+}
+
 function openHwModal(c){
   activeLessons = c.rows;
   document.getElementById("hwModalTitle").textContent = c.subject || "Домашнее задание";
@@ -629,6 +780,7 @@ function openHwModal(c){
   attachNew = [];
   renderAttachList();
   loadTakenTopics(c);
+  renderStream(c);
   document.getElementById("hwOverlay").classList.add("active");
 }
 
@@ -664,10 +816,13 @@ document.getElementById("hwCancelBtn").onclick = function(){
   document.getElementById("hwOverlay").classList.remove("active");
 };
 
-document.getElementById("hwSaveBtn").onclick = async function(){
+async function saveHomework(withStream){
   if(!activeLessons.length) return;
-  var btn = document.getElementById("hwSaveBtn");
-  btn.disabled = true; btn.textContent = "Сохраняем...";
+  var btn = document.getElementById(withStream ? "hwSaveStreamBtn" : "hwSaveBtn");
+  var oldText = btn.textContent;
+  var b1 = document.getElementById("hwSaveBtn"), b2 = document.getElementById("hwSaveStreamBtn");
+  b1.disabled = b2.disabled = true;
+  btn.textContent = "Сохраняем...";
 
   var desc = document.getElementById("hwDesc").value.trim();
   var due = document.getElementById("hwDue").value || null;
@@ -681,10 +836,16 @@ document.getElementById("hwSaveBtn").onclick = async function(){
     var attachments = attachSaved.concat(uploaded);
     btn.textContent = "Сохраняем...";
 
-    // One homework row per group's copy of the lesson (unique per slot),
-    // so every group sees the same assignment.
-    var rows = activeLessons.map(function(l){
-      return { schedule_slot_id: l.id, description: desc, due_date: due, attachments: attachments };
+    // One homework row per group's copy of the lesson (unique per slot).
+    var slots = activeLessons.map(function(l){ return l.id; });
+    if(withStream){
+      document.querySelectorAll("#streamList input:checked").forEach(function(cb){
+        var t = streamTargetList[+cb.getAttribute("data-i")];
+        if(t && slots.indexOf(t.row.id) === -1) slots.push(t.row.id);
+      });
+    }
+    var rows = slots.map(function(id){
+      return { schedule_slot_id: id, description: desc, due_date: due, attachments: attachments };
     });
     var res = await sb.from("homework").upsert(rows, { onConflict: "schedule_slot_id" });
 
@@ -702,8 +863,111 @@ document.getElementById("hwSaveBtn").onclick = async function(){
   } catch(e){
     showToast("Ошибка: " + e.message);
   } finally {
-    btn.disabled = false; btn.textContent = "Сохранить";
+    b1.disabled = b2.disabled = false;
+    btn.textContent = oldText;
   }
+}
+document.getElementById("hwSaveBtn").onclick = function(){ saveHomework(false); };
+document.getElementById("hwSaveStreamBtn").onclick = function(){ saveHomework(true); };
+
+
+/* ---------------- Literature (teacher publishes for chosen groups) ---------------- */
+function myGroupsList(){
+  var by = {};
+  lessonsCache.forEach(function(l){ if(l.group_id && l.groups && l.groups.name) by[l.group_id] = l.groups.name; });
+  return Object.keys(by).map(function(id){ return { id: id, name: by[id] }; })
+    .sort(function(a, b){ return a.name.localeCompare(b.name, "ru", { numeric: true }); });
+}
+function mySubjects(){
+  var set = {};
+  lessonsCache.forEach(function(l){ if(l.subject) set[l.subject] = true; });
+  return Object.keys(set).sort(function(a, b){ return a.localeCompare(b, "ru"); });
+}
+var litFile = null;
+async function loadLiterature(){
+  var list = document.getElementById("litList");
+  list.innerHTML = '<div class="empty-day">Загрузка...</div>';
+  var res = await sb.from("teacher_literature").select("*").eq("teacher_id", teacherProfile.id).order("created_at", { ascending: false });
+  if(res.error){ list.innerHTML = '<div class="empty-day">Не получилось загрузить: ' + escapeHtml(res.error.message) + '</div>'; return; }
+  var names = {}; myGroupsList().forEach(function(g){ names[g.id] = g.name; });
+  if(!res.data.length){ list.innerHTML = '<div class="empty-day">Вы ещё ничего не добавили.</div>'; return; }
+  list.innerHTML = "";
+  res.data.forEach(function(b){
+    var el = document.createElement("div");
+    el.className = "lit-item";
+    var gl = (b.group_ids || []).map(function(id){ return names[id] || "?"; }).join(", ");
+    el.innerHTML = '<div class="t">' + escapeHtml(b.title) + '</div>' +
+      '<div class="m">' + escapeHtml(b.subject) + (b.author ? " · " + escapeHtml(b.author) : "") +
+      '<br>' + (b.course ? b.course + " курс" : "") + (b.semester ? ", " + b.semester + " семестр" : "") + (gl ? " · гр. " + escapeHtml(gl) : "") + '</div>' +
+      '<div class="a">' + (b.url ? '<a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener">🔗 Ссылка</a>' : '') +
+      (b.file && b.file.url ? '<a href="' + escapeHtml(b.file.url) + '" target="_blank" rel="noopener">📎 ' + escapeHtml(b.file.name || "Файл") + '</a>' : '') +
+      '<button class="del">Удалить</button></div>';
+    el.querySelector(".del").onclick = async function(){
+      if(!window.confirm("Удалить «" + b.title + "»?")) return;
+      var d = await sb.from("teacher_literature").delete().eq("id", b.id);
+      if(d.error){ showToast("Не удалилось: " + d.error.message); return; }
+      if(b.file && b.file.path) sb.storage.from(HW_BUCKET).remove([b.file.path]);
+      showToast("Удалено"); loadLiterature();
+    };
+    list.appendChild(el);
+  });
+}
+function renderLitGroups(){
+  var subj = document.getElementById("litSubject").value;
+  // Pre-tick the groups that have this subject with this teacher.
+  var withSubj = {};
+  lessonsCache.forEach(function(l){ if(l.subject === subj && l.group_id) withSubj[l.group_id] = true; });
+  var wrap = document.getElementById("litGroups");
+  wrap.innerHTML = "";
+  myGroupsList().forEach(function(g){
+    var el = document.createElement("label");
+    el.className = "check-row";
+    el.innerHTML = '<input type="checkbox" value="' + g.id + '"' + (withSubj[g.id] ? " checked" : "") + '><span>' + escapeHtml(g.name) + ' гр.</span>';
+    wrap.appendChild(el);
+  });
+}
+document.getElementById("litAddBtn").onclick = function(){
+  var sel = document.getElementById("litSubject");
+  sel.innerHTML = mySubjects().map(function(x){ return '<option>' + escapeHtml(x) + '</option>'; }).join("");
+  ["litTitle", "litAuthor", "litUrl"].forEach(function(id){ document.getElementById(id).value = ""; });
+  litFile = null; document.getElementById("litFileName").textContent = "";
+  renderLitGroups();
+  document.getElementById("litOverlay").classList.add("active");
+};
+document.getElementById("litSubject").onchange = renderLitGroups;
+document.getElementById("litCancelBtn").onclick = function(){ document.getElementById("litOverlay").classList.remove("active"); };
+document.getElementById("litFileBtn").onclick = function(){ document.getElementById("litFileInput").click(); };
+document.getElementById("litFileInput").onchange = function(){
+  var f = this.files[0]; this.value = "";
+  if(!f) return;
+  if(f.size > MAX_FILE_MB * 1024 * 1024){ showToast("Файл больше " + MAX_FILE_MB + " МБ"); return; }
+  litFile = f; document.getElementById("litFileName").textContent = "📎 " + f.name + " · " + fmtSize(f.size);
+};
+document.getElementById("litSaveBtn").onclick = async function(){
+  var title = document.getElementById("litTitle").value.trim();
+  var url = document.getElementById("litUrl").value.trim();
+  var groups = Array.prototype.map.call(document.querySelectorAll("#litGroups input:checked"), function(cb){ return cb.value; });
+  if(!title){ showToast("Введите название"); return; }
+  if(!groups.length){ showToast("Выберите хотя бы одну группу"); return; }
+  if(!url && !litFile){ showToast("Добавьте ссылку или файл"); return; }
+  if(url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+  var btn = this; btn.disabled = true; btn.textContent = "Сохраняем...";
+  try{
+    var file = litFile ? await uploadOne(litFile) : null;
+    var ins = await sb.from("teacher_literature").insert({
+      teacher_id: teacherProfile.id, teacher_name: teacherProfile.full_name,
+      subject: document.getElementById("litSubject").value, title: title,
+      author: document.getElementById("litAuthor").value.trim() || null,
+      url: url || null, file: file,
+      course: +document.getElementById("litCourse").value, semester: +document.getElementById("litSem").value,
+      group_ids: groups
+    });
+    if(ins.error){ showToast("Не сохранилось: " + ins.error.message); return; }
+    document.getElementById("litOverlay").classList.remove("active");
+    showToast("Литература добавлена");
+    loadLiterature();
+  } catch(e){ showToast("Ошибка: " + e.message); }
+  finally { btn.disabled = false; btn.textContent = "Добавить"; }
 };
 
 loadTeacherProfile();
