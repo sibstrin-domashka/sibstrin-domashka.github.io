@@ -34,6 +34,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const budget = require("./scraper-budget");
 const crypto = require("crypto");
 
 const TARGET_URL = process.env.LECTURER_TIMETABLE_URL || "https://sibstrin.ru/timetable/lecturer/";
@@ -200,10 +201,18 @@ function randomCode() {
 }
 
 async function run() {
+  // Расписания преподавателей меняются редко: по расписанию обновляем их только
+  // в дни из TEACHERS_DAYS (1 = понедельник ... 7 = воскресенье). Ручной запуск работает всегда.
+  if (process.env.TEACHERS_DAYS && process.env.GITHUB_EVENT_NAME === "schedule") {
+    var dow = ((new Date().getDay() + 6) % 7) + 1;
+    var days = process.env.TEACHERS_DAYS.split(",").map(function (x) { return parseInt(x, 10); });
+    if (days.indexOf(dow) === -1) { console.log("Сегодня не день обновления преподавателей (" + process.env.TEACHERS_DAYS + ") — пропускаю, капчи не трачу."); return; }
+  }
   const puppeteer = require("puppeteer-extra");
   const StealthPlugin = require("puppeteer-extra-plugin-stealth");
   puppeteer.use(StealthPlugin());
   const browser = await puppeteer.launch({
+    userDataDir: budget.PROFILE_DIR, // cookie после капчи сохраняется между запусками
     headless: false, // see scrape-schedule.js's comment - headless is more detectable here
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"]
   });
@@ -249,6 +258,7 @@ async function run() {
     if (!RUCAPTCHA_KEY) { console.log("No RUCAPTCHA_KEY set - can't auto-solve a real captcha."); return false; }
     var sitekey = await findYandexSitekey();
     if (!sitekey) { console.log("No Yandex SmartCaptcha sitekey found - nothing to solve here."); return false; }
+    if (!budget.take()) return false;
     console.log("Found Yandex SmartCaptcha sitekey, sending to rucaptcha.com...");
     var submitUrl = RUCAPTCHA_HOST + "/in.php?key=" + encodeURIComponent(RUCAPTCHA_KEY) +
       "&method=yandex&sitekey=" + encodeURIComponent(sitekey) + "&pageurl=" + encodeURIComponent(page.url()) + "&json=1";

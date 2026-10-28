@@ -18,6 +18,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const budget = require("./scraper-budget");
 
 const TARGET_URL =
   process.env.TIMETABLE_URL ||
@@ -112,6 +113,7 @@ async function run() {
     // this exact machine/network working fine while headless Puppeteer did
     // not. A real, visible browser window sidesteps that entirely. This
     // will briefly pop up a real Chrome window when the runner executes.
+    userDataDir: budget.PROFILE_DIR, // cookie после капчи сохраняется между запусками
     headless: false,
     args: [
       "--no-sandbox",
@@ -175,6 +177,7 @@ async function run() {
       console.log("No Yandex SmartCaptcha sitekey found on the page - nothing to solve here.");
       return false;
     }
+    if (!budget.take()) return false;
     console.log("Found Yandex SmartCaptcha sitekey, sending to rucaptcha.com...");
 
     var submitUrl = RUCAPTCHA_HOST + "/in.php?key=" + encodeURIComponent(RUCAPTCHA_KEY) +
