@@ -72,11 +72,28 @@ input:focus{outline:none;border-color:var(--accent)}
 .loading{color:var(--text-secondary);font-size:.9rem;text-align:center}
 .legal{margin-top:16px;text-align:center;font-size:.76rem;color:var(--text-secondary);line-height:1.6}
 .legal a{color:var(--accent)}
+.switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:var(--accent);cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
+.invite-note{background:rgba(79,209,165,.12);color:var(--text-primary);border-radius:10px;padding:10px 12px;font-size:.86rem;line-height:1.45;margin-bottom:6px}
 </style>
 </head>
 <body>
 
 <div id="bootMsg" class="loading">Загрузка...</div>
+
+<div class="auth-card" id="reqCard" style="display:none">
+  <div class="brand">👨‍🏫 Домашка</div>
+  <div class="invite-note" id="reqInvite" style="display:none"></div>
+  <div class="auth-sub">Оставьте заявку — мы пришлём код входа на указанную почту. Обычно в течение дня.</div>
+  <label>Фамилия Имя Отчество</label>
+  <input type="text" id="reqName" placeholder="Иванов Иван Иванович" autocomplete="name">
+  <label>Рабочая почта</label>
+  <input type="email" id="reqEmail" placeholder="ivanov@sibstrin.ru" autocomplete="email">
+  <label>Предметы (необязательно)</label>
+  <input type="text" id="reqSubj" placeholder="История России">
+  <button class="btn" id="reqBtn">Отправить заявку</button>
+  <div class="msg" id="reqMsg"></div>
+  <button class="switch" id="toLogin">У меня уже есть код → войти</button>
+</div>
 
 <div class="auth-card" id="authCard" style="display:none">
   <div class="brand">👨‍🏫 Домашка</div>
@@ -90,6 +107,7 @@ input:focus{outline:none;border-color:var(--accent)}
 
   <button class="btn" id="authBtn">Войти</button>
   <div class="msg" id="authMsg"></div>
+  <button class="switch" id="toReq">Нет кода? Оставить заявку на доступ</button>
   <div class="legal">Входя, вы принимаете <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a> и <a href="privacy.html" target="_blank" rel="noopener">Политику конфиденциальности</a>.<br><a href="support.html" target="_blank" rel="noopener">Поддержка</a> · Независимый проект, не официальный сервис НГАСУ</div>
 </div>
 
@@ -125,6 +143,32 @@ if(typeof supabase === "undefined"){
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { storageKey: "domashka-teacher-auth", persistSession: true, autoRefreshToken: true }
 });
+
+var inviteGroup = (new URLSearchParams(location.search).get("invite") || "").replace(/[^0-9А-Яа-яЁё()]/g, "").slice(0, 20);
+function showReq(on){
+  document.getElementById("reqCard").style.display = on ? "block" : "none";
+  document.getElementById("authCard").style.display = on ? "none" : "block";
+}
+document.getElementById("toReq").onclick = function(){ showReq(true); };
+document.getElementById("toLogin").onclick = function(){ showReq(false); };
+if(inviteGroup){
+  var ri = document.getElementById("reqInvite");
+  ri.textContent = "Вас пригласили студенты группы " + inviteGroup + ". «Домашка» — расписание, задания, литература и электронный журнал в одном приложении.";
+  ri.style.display = "block";
+}
+document.getElementById("reqBtn").onclick = async function(){
+  var m = document.getElementById("reqMsg"), btn = this;
+  var name = document.getElementById("reqName").value.trim().replace(/\s+/g, " ");
+  var email = document.getElementById("reqEmail").value.trim();
+  if(name.split(" ").length < 2){ m.textContent = "Укажите ФИО полностью"; m.className = "msg err"; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ m.textContent = "Проверьте почту"; m.className = "msg err"; return; }
+  btn.disabled = true;
+  var r = await sb.from("teacher_requests").insert({ full_name:name, email:email, subjects:document.getElementById("reqSubj").value.trim() || null, invited_by_group:inviteGroup || null });
+  btn.disabled = false;
+  if(r.error){ m.textContent = "Не отправилось: " + r.error.message; m.className = "msg err"; return; }
+  m.textContent = "Заявка отправлена! Код входа придёт на " + email + "."; m.className = "msg ok";
+  btn.style.display = "none";
+};
 
 function showAuthMsg(text, ok){
   var m = document.getElementById("authMsg");
@@ -200,6 +244,7 @@ document.getElementById("authBtn").onclick = async function(){
     // Ignore - just fall through to showing the login form.
   }
   showBoot(false);
+  if(inviteGroup) showReq(true);
   if(/[?&]deleted=1/.test(location.search)) showAuthMsg("Аккаунт и данные удалены.", true);
 })();
 </script>

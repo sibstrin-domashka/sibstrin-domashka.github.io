@@ -253,6 +253,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .chg-line{font-size:.78rem;font-weight:700;margin-top:4px}
 .chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
 .chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
+.share-row{display:flex;gap:6px;flex-wrap:wrap}
+.share-row button{flex:1 1 auto}
 .report-link{display:block;margin:14px auto 0;background:none;border:none;color:var(--text-secondary);font-size:.8rem;text-decoration:underline;cursor:pointer;font-family:inherit}
 .t-rep{background:none;border:none;color:var(--text-secondary);font-size:.85rem;cursor:pointer;padding:2px 6px;margin-left:2px}
 .deadline-banner{max-width:700px;margin:0 auto 12px;padding:10px 14px;border-radius:14px;background:rgba(227,192,119,.14);border:1px solid rgba(227,192,119,.4);color:var(--text-primary);font-size:.86rem;line-height:1.5}
@@ -819,6 +821,29 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     var n=myMembership.pending_count||0;
     badge.textContent=n; badge.style.display=n?"inline-block":"none";
   }
+  function teacherInviteLink(){
+    var base=window.location.href.replace(/[^\/]*([?#].*)?$/,"");
+    return base+"teacher.html?invite="+encodeURIComponent((myMembership&&myMembership.group_name)||"");
+  }
+  function shareButtons(id){
+    return '<div class="share-row">'+
+      '<button class="btn-blue btn-sm" id="'+id+'Share">Поделиться</button>'+
+      '<button class="btn-outline btn-sm" id="'+id+'Tg">Telegram</button>'+
+      '<button class="btn-outline btn-sm" id="'+id+'Wa">WhatsApp</button>'+
+      '<button class="btn-outline btn-sm" id="'+id+'Copy">Копировать</button></div>';
+  }
+  function bindShare(id, url, text){
+    var sh=document.getElementById(id+"Share");
+    if(!navigator.share) sh.style.display="none";
+    sh.onclick=function(){ navigator.share({title:"Домашка", text:text, url:url}).catch(function(){}); };
+    document.getElementById(id+"Tg").onclick=function(){ window.open("https://t.me/share/url?url="+encodeURIComponent(url)+"&text="+encodeURIComponent(text),"_blank","noopener"); };
+    document.getElementById(id+"Wa").onclick=function(){ window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener"); };
+    document.getElementById(id+"Copy").onclick=function(){
+      var btn=this;
+      (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(function(){ btn.textContent="Скопировано!"; setTimeout(function(){ btn.textContent="Копировать"; },1500); })
+        .catch(function(){ toast("Скопируй ссылку вручную"); });
+    };
+  }
   function inviteLink(){
     var base=window.location.href.replace(/[^\/]*([?#].*)?$/,"");
     return base+"auth.html?g="+encodeURIComponent(myMembership.join_code);
@@ -828,19 +853,22 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     document.getElementById("grpTitle").textContent="Группа "+(myMembership.group_name||"");
     var body=document.getElementById("grpBody");
     var link=inviteLink();
+    var tLink=teacherInviteLink();
     var h='<h4 style="font-size:.9rem;margin-bottom:4px">Пригласить одногруппников</h4>'+
-      '<p style="color:var(--text-secondary);font-size:.82rem;line-height:1.4">Отправь ссылку в беседу группы. Новеньких нужно будет подтвердить ниже.</p>'+
+      '<p style="color:var(--text-secondary);font-size:.82rem;line-height:1.4">Отправь ссылку в беседу или канал группы. Новеньких нужно будет подтвердить ниже.</p>'+
       '<div class="grp-link" id="grpLink">'+esc(link)+'</div>'+
-      '<button class="btn-blue btn-sm" id="grpCopy" style="width:100%">Скопировать ссылку</button>'+
+      shareButtons("st")+
+      '<h4 style="font-size:.9rem;margin:18px 0 4px">Пригласить преподавателя</h4>'+
+      '<p style="color:var(--text-secondary);font-size:.82rem;line-height:1.4">Преподаватель оставит заявку, и ему на почту придёт код входа. Он сможет выкладывать задания, литературу и вести журнал.</p>'+
+      '<div class="grp-link">'+esc(tLink)+'</div>'+
+      shareButtons("tc")+
       '<h4 style="font-size:.9rem;margin:18px 0 8px">Ждут подтверждения</h4><div id="reqList"><p style="color:var(--text-secondary);font-size:.85rem">Загрузка...</p></div>'+
       '<p style="color:var(--text-secondary);font-size:.75rem;margin-top:10px;line-height:1.4">Подтверждай только тех, кого точно знаешь по группе: подтверждённые видят домашку и могут забирать темы.</p>';
     body.innerHTML=h;
     document.getElementById("ovGroup").classList.add("open");
-    document.getElementById("grpCopy").onclick=function(){
-      var btn=this;
-      (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(function(){ btn.textContent="Скопировано!"; setTimeout(function(){ btn.textContent="Скопировать ссылку"; },1500); })
-        .catch(function(){ toast("Скопируй ссылку вручную"); });
-    };
+    var gName=myMembership.group_name||"";
+    bindShare("st", link, "Присоединяйся к группе "+gName+" в «Домашке»: расписание, домашка и темы докладов в одном месте.");
+    bindShare("tc", tLink, "Здравствуйте! Наша группа "+gName+" пользуется приложением «Домашка» (расписание, задания, журнал). Приглашаем вас: здесь можно оставить заявку на доступ.");
     await drawRequests();
   }
   async function drawRequests(){
@@ -1504,7 +1532,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     var teachersRes=await sb.from("teachers").select("id,full_name,photo_url").eq("group_id",myGroupId);
     if(teachersRes.error){ el.innerHTML='<div class="dv-empty-msg">Ошибка: '+esc(teachersRes.error.message)+'</div>'; return; }
     var rows=teachersRes.data||[];
-    if(!rows.length){ el.innerHTML='<div class="lit-header"><h2>👨‍🏫 Преподаватели</h2></div><div class="dv-empty-msg">Пока пусто — появятся, как только подтянется расписание</div>'; return; }
+    if(!rows.length){ el.innerHTML='<div class="lit-header"><h2>Отзывы о преподавателях</h2></div><div class="dv-empty-msg">Пока пусто — появятся, как только подтянется расписание</div>'; return; }
 
     var teacherIds=rows.map(function(t){return t.id;});
     var slotsRes=await sb.from("schedule_slots").select("teacher_id,subject").eq("group_id",myGroupId);
@@ -1536,7 +1564,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
 
   function renderTeachersList(){
     var el=document.getElementById("teachersScreen");
-    var h='<div class="lit-header"><h2>👨‍🏫 Преподаватели</h2><input id="teacherSearch" class="lit-search" placeholder="Поиск по имени или предмету..."></div>';
+    var h='<div class="lit-header"><h2>Отзывы о преподавателях</h2><input id="teacherSearch" class="lit-search" placeholder="Поиск по имени или предмету..."></div>';
     h+='<div id="teacherListBody"></div>';
     el.innerHTML=h;
     renderTeacherCards("");
@@ -2567,9 +2595,9 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     var items=[
       { icon:"📚", title:"Литература", sub:"Книги и пособия по предметам", onClick:function(){ if(showingTeachers) document.getElementById("teachersBtn").click(); if(!showingLit) document.getElementById("litBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } },
       { icon:"🗓️", title:"Расписание сессий", sub:"Зачёты и экзамены", onClick:openSessions },
-      { icon:"👨‍🏫", title:"Преподаватели", onClick:function(){ if(showingLit) document.getElementById("litBtn").click(); if(!showingTeachers) document.getElementById("teachersBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } }
+      { icon:"👨‍🏫", title:"Отзывы о преподавателях", sub:"Оценки и отзывы студентов", onClick:function(){ if(showingLit) document.getElementById("litBtn").click(); if(!showingTeachers) document.getElementById("teachersBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } }
     ];
-    if(myMembership && myMembership.join_code) items.push({ icon:"👥", title:"Моя группа", sub:"Ссылка-приглашение и заявки", badge:myMembership.pending_count||0, onClick:openGroupPanel });
+    if(myMembership && myMembership.join_code) items.push({ icon:"👥", title:"Моя группа", sub:"Пригласить студентов и преподавателей", badge:myMembership.pending_count||0, onClick:openGroupPanel });
     items.push({ icon:"💡", title:"Предложить идею", sub:"Что добавить или улучшить", onClick:DomashkaSettings.idea });
     items.push({ icon:"🐞", title:"Сообщить о проблеме", onClick:DomashkaSettings.problem });
     items.push({ icon:"📨", title:"Мои обращения", sub:"Ответы владельца", badge:moreReplies||0, onClick:DomashkaSettings.mine });

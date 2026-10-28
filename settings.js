@@ -488,8 +488,9 @@
 
   /* ---------------- Обращения — для владельца ---------------- */
   var inboxFilter = "all";
-  async function openReports(){
-    var ov = sheet("dsSub", "📨 Обращения", '<p class="ds-p">Загрузка...</p>');
+  async function openReports(filter){
+    if(typeof filter === "string") inboxFilter = filter;
+    var ov = sheet("dsSub", inboxFilter === "idea" ? "💡 Идеи" : inboxFilter === "app" ? "🐞 Проблемы" : inboxFilter === "report" ? "🚩 Жалобы" : "📨 Обращения", '<p class="ds-p">Загрузка...</p>');
     var r = await opts.sb.from("content_reports").select("*").order("created_at", { ascending:false }).limit(200);
     var body = ov.querySelector(".ds-body");
     if(r.error){ body.innerHTML = '<p class="ds-p">Не загрузилось: ' + esc(r.error.message) + "</p>"; return; }
@@ -520,7 +521,7 @@
     });
     body.innerHTML = h;
     async function resolve(id){ await opts.sb.from("content_reports").update({ status:"resolved", resolved_at:new Date().toISOString() }).eq("id", id); }
-    body.querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ inboxFilter = b.getAttribute("data-f"); openReports(); }; });
+    body.querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ openReports(b.getAttribute("data-f")); }; });
     body.querySelectorAll("[data-done]").forEach(function(b){ b.onclick = async function(){ await resolve(b.getAttribute("data-done")); openReports(); }; });
     body.querySelectorAll("[data-reply]").forEach(function(b){ b.onclick = async function(){
       var id = b.getAttribute("data-reply"), ta = body.querySelector('[data-rtext="' + id + '"]'), t = ta ? ta.value.trim() : "";
@@ -535,8 +536,15 @@
       await resolve(b.getAttribute("data-rid")); toast("Тема удалена"); openReports();
     }; });
   }
-  async function openCount(){
-    try{ var r = await opts.sb.from("content_reports").select("id").eq("status", "open"); return (r.data || []).length; }catch(e){ return 0; }
+  async function openCount(kind){
+    try{
+      var r = await opts.sb.from("content_reports").select("id,target_kind").eq("status", "open");
+      var l = r.data || [];
+      if(kind === "idea") l = l.filter(function(x){ return x.target_kind === "idea"; });
+      else if(kind === "app") l = l.filter(function(x){ return x.target_kind === "app"; });
+      else if(kind === "report") l = l.filter(function(x){ return x.target_kind !== "idea" && x.target_kind !== "app"; });
+      return l.length;
+    }catch(e){ return 0; }
   }
 
   /* ---------------- Меню «Ещё» ---------------- */
@@ -560,7 +568,7 @@
     idea: function(){ report({ kind:"idea" }); },
     problem: function(){ report({ kind:"app" }); },
     mine: openMine,
-    inbox: openReports,
+    inbox: function(f){ return openReports(typeof f === "string" ? f : "all"); },
     inboxCount: openCount,
     checkReplies: checkReplies,
     toast: toast,

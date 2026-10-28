@@ -104,6 +104,11 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   color:var(--accent-contrast);font-weight:700;font-size:.92rem;cursor:pointer;margin-top:4px;
 }
 .btn-add:disabled{opacity:.5}
+.inbox-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.inbox-tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;color:var(--text-primary)}
+.inbox-tile span{font-size:1.4rem}.inbox-tile b{font-size:.92rem}.inbox-tile small{font-size:.75rem;color:var(--text-secondary)}
+.hint-owner{font-size:.85rem;color:var(--text-secondary);line-height:1.45;margin-bottom:8px}
+.btn-mini{padding:7px 12px;border-radius:999px;border:none;background:var(--accent);color:var(--accent-contrast);font-weight:600;font-size:.8rem;cursor:pointer;flex-shrink:0}
 .lit-row{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
   padding:11px 14px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center;gap:8px;
@@ -145,19 +150,25 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     <div class="stat-card"><div class="icon">⏳</div><div class="num" id="statTrial">–</div><div class="cap">На пробном</div></div>
   </div>
 
-  <button class="btn-add" id="inboxBtn" style="margin-bottom:16px">📬 Обращения пользователей <span id="inboxCount"></span></button>
   <div class="tabs">
     <button class="tab-btn active" id="tabStudents">Ученики</button>
     <button class="tab-btn" id="tabTeachers">Преподаватели</button>
   </div>
   <div id="studentsList"><div class="loading">Загрузка...</div></div>
 
-  <div class="section-title">📚 Литература</div>
-  <div class="fg"><label>Предмет</label><input id="litSubject" placeholder="Физика"></div>
-  <div class="fg"><label>Название книги</label><input id="litTitle" placeholder="Курс общей физики"></div>
-  <div class="fg"><label>PDF-файл</label><input type="file" id="litFile" accept="application/pdf"></div>
-  <button class="btn-add" id="litAddBtn">Загрузить книгу</button>
-  <div id="litList" style="margin-top:14px"></div>
+  <div class="section-title">📬 Обращения</div>
+  <div class="inbox-grid">
+    <button class="inbox-tile" id="ibIdea"><span>💡</span><b>Идеи</b><small id="cIdea">—</small></button>
+    <button class="inbox-tile" id="ibApp"><span>🐞</span><b>Проблемы</b><small id="cApp">—</small></button>
+    <button class="inbox-tile" id="ibRep"><span>🚩</span><b>Жалобы</b><small id="cRep">—</small></button>
+  </div>
+
+  <div class="section-title">👨‍🏫 Заявки преподавателей</div>
+  <div id="treqList"><div class="loading">Загрузка...</div></div>
+
+  <div class="section-title">✉️ Рассылка преподавателям</div>
+  <p class="hint-owner">Таблица ФИО + код входа для всех преподавателей. Скачай её, добавь колонку с почтой и запусти рассылку (инструкция — в файле рассылки).</p>
+  <button class="btn-add" id="codesBtn">Скачать коды преподавателей (CSV)</button>
 </div>
 
 <script>
@@ -214,7 +225,6 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     if(window.DomashkaSettings){
       DomashkaSettings.init({ sb:sb, role:"student", loginUrl:"auth.html", myId:function(){ return session.user.id; },
         isOwner:function(){ return true; }, getInfo:function(){ return { name:myProf.data.full_name||"Владелец", subtitle:"Владелец" }; } });
-      DomashkaSettings.inboxCount().then(function(n){ document.getElementById("inboxCount").textContent = n ? "· " + n + " новых" : ""; });
     }
     myGroupIdForUpload=myProf.data.group_id;
 
@@ -223,7 +233,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     if(!myGroupIdForUpload && allGroups.length) myGroupIdForUpload=allGroups[0].id;
 
     await loadStudents(groupsRes.data||[]);
-    await loadLiterature();
+    await loadOwnerExtras();
   }
 
   async function loadStudents(groupsData){
@@ -300,51 +310,45 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     listEl.innerHTML=h;
   }
 
-  async function loadLiterature(){
-    var listEl=document.getElementById("litList");
-    if(!allGroups.length){ listEl.innerHTML=''; return; }
-    var groupIds=allGroups.map(function(g){return g.id;});
-    var res=await sb.from("literature_books").select("id,subject,title,storage_path,group_id").in("group_id",groupIds);
-    if(res.error){ listEl.innerHTML='<div class="error-msg">Ошибка: '+esc(res.error.message)+'</div>'; return; }
-    var rows=res.data||[];
-    if(!rows.length){ listEl.innerHTML='<div class="empty-msg">Пока ничего не загружено</div>'; return; }
-    var h="";
-    rows.forEach(function(b){
-      h+='<div class="lit-row"><div><div class="lname">'+esc(b.title)+'</div><div class="lsub">'+esc(b.subject)+'</div></div>';
-      h+='<button class="del-btn" data-id="'+b.id+'" data-path="'+esc(b.storage_path)+'">Удалить</button></div>';
-    });
-    listEl.innerHTML=h;
-    listEl.querySelectorAll(".del-btn").forEach(function(btn){
-      btn.onclick=async function(){
-        await sb.storage.from("literature").remove([this.getAttribute("data-path")]);
-        await sb.from("literature_books").delete().eq("id",this.getAttribute("data-id"));
-        loadLiterature();
-      };
-    });
-  }
-
-  document.getElementById("litAddBtn").onclick=async function(){
-    var subject=document.getElementById("litSubject").value.trim();
-    var title=document.getElementById("litTitle").value.trim();
-    var file=document.getElementById("litFile").files[0];
-    if(!subject||!title||!file){ alert("Заполни предмет, название и выбери файл"); return; }
-    if(!myGroupIdForUpload){ alert("Не найдена группа для загрузки"); return; }
-    var btn=this;
-    btn.disabled=true; btn.textContent="Загружаем...";
-    try{
-      var safeName=title.replace(/[^a-zA-Zа-яА-Я0-9_.-]/g,"_").slice(0,60)+".pdf";
-      var path=myGroupIdForUpload+"/"+Date.now()+"-"+safeName;
-      var up=await sb.storage.from("literature").upload(path, file, {contentType:"application/pdf"});
-      if(up.error){ alert("Ошибка загрузки: "+up.error.message); return; }
-      var ins=await sb.from("literature_books").insert({group_id:myGroupIdForUpload, subject:subject, title:title, storage_path:path, file_size:file.size});
-      if(ins.error){ alert("Файл загружен, но не сохранился в списке: "+ins.error.message); return; }
-      document.getElementById("litSubject").value="";
-      document.getElementById("litTitle").value="";
-      document.getElementById("litFile").value="";
-      await loadLiterature();
-    } finally {
-      btn.disabled=false; btn.textContent="Загрузить книгу";
+  async function loadOwnerExtras(){
+    if(window.DomashkaSettings){
+      ["idea","app","report"].forEach(function(k){
+        DomashkaSettings.inboxCount(k).then(function(n){ document.getElementById(k==="idea"?"cIdea":k==="app"?"cApp":"cRep").textContent = n ? n+" новых" : "нет новых"; });
+      });
     }
+    await loadTeacherRequests();
+  }
+  async function loadTeacherRequests(){
+    var el=document.getElementById("treqList");
+    var r=await sb.from("teacher_requests").select("*").order("created_at",{ascending:false}).limit(50);
+    if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 20_scrape_queue_and_teacher_requests.sql ('+esc(r.error.message)+')</div>'; return; }
+    var rows=r.data||[];
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Заявок пока нет. Студенты приглашают преподавателей через «Ещё → Моя группа».</p>'; return; }
+    el.innerHTML=rows.map(function(x){
+      return '<div class="lit-row"><div><div class="lname">'+esc(x.full_name)+'</div><div class="lsub">'+esc(x.email)+(x.subjects?' · '+esc(x.subjects):'')+(x.invited_by_group?' · пригласила группа '+esc(x.invited_by_group):'')+' · '+fmtDate(x.created_at)+'</div></div>'+
+        (x.status==='new'?'<button class="btn-mini" data-grant="'+x.id+'">Выдать код</button>':'<span class="lsub">'+(x.status==='sent'?'код выдан':'отклонено')+'</span>')+'</div>';
+    }).join("");
+    el.querySelectorAll("[data-grant]").forEach(function(b){ b.onclick=async function(){
+      b.disabled=true;
+      var g=await sb.rpc("owner_grant_teacher",{p_request:b.getAttribute("data-grant")});
+      if(g.error){ alertBox("Ошибка: "+g.error.message); b.disabled=false; return; }
+      var t=(g.data||[])[0];
+      var site=location.href.replace(/[^\/]*([?#].*)?$/,"");
+      var body="Здравствуйте, "+t.full_name+"!\n\nВаш доступ к «Домашке» готов.\n\nВход: "+site+"teacher.html\nФИО: "+t.full_name+"\nКод доступа: "+t.code+"\n\nЕсли возникнут вопросы — просто ответьте на это письмо.\n\nКоманда «Домашки»";
+      location.href="mailto:"+encodeURIComponent(t.email)+"?subject="+encodeURIComponent("Ваш доступ к «Домашке»")+"&body="+encodeURIComponent(body);
+      loadTeacherRequests();
+    }; });
+  }
+  function alertBox(m){ var d=document.createElement("div"); d.className="error-msg"; d.textContent=m; document.getElementById("treqList").prepend(d); }
+  document.getElementById("ibIdea").onclick=function(){ DomashkaSettings.inbox("idea"); };
+  document.getElementById("ibApp").onclick=function(){ DomashkaSettings.inbox("app"); };
+  document.getElementById("ibRep").onclick=function(){ DomashkaSettings.inbox("report"); };
+  document.getElementById("codesBtn").onclick=async function(){
+    var r=await sb.rpc("owner_teacher_codes");
+    if(r.error){ alertBox("Нужно запустить 20_scrape_queue_and_teacher_requests.sql ("+r.error.message+")"); return; }
+    var rows=[["ФИО","Код","Уже вошёл","Почта"]].concat((r.data||[]).map(function(x){ return [x.full_name,x.code,x.registered?"да":"нет",""]; }));
+    var csv="﻿"+rows.map(function(row){ return row.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
+    var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="domashka-teacher-codes.csv"; a.click();
   };
 
   document.getElementById("tabStudents").onclick=function(){
@@ -352,7 +356,6 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     document.getElementById("tabTeachers").classList.remove("active");
     loadStudents(allGroups);
   };
-  document.getElementById("inboxBtn").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.inbox(); };
   document.getElementById("tabTeachers").onclick=function(){
     document.getElementById("tabTeachers").classList.add("active");
     document.getElementById("tabStudents").classList.remove("active");
