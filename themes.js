@@ -3,8 +3,8 @@
    * Сам выбирает фон по дате: зима / весна / лето / осень и праздники
      (Новый год, 23 февраля, 8 марта, День Победы, 1 сентября, Хэллоуин).
    * Если в папке assets/bg/ лежит картинка с именем темы (например
-     assets/bg/newyear.jpg) — ставит её. Если картинки нет — берёт горы
-     assets/mountain-bg.jpg и перекрашивает их под тему.
+     assets/bg/newyear.jpg) — ставит её. Если картинки нет — берёт фон
+     assets/bg/green-texture.jpg (зелёная текстура) и перекрашивает её под тему.
    * Поверх — лёгкая анимация (снег, листья, лепестки, летучие мыши,
      салют). Выключается в настройках; не работает, если в системе
      включено «уменьшить движение».
@@ -18,7 +18,7 @@
   // base: цвет затемнения (r,g,b); color: перекраска гор; glow: свечение.
   var THEMES = {
     auto:      { name:"Авто — по сезону и праздникам" },
-    classic:   { name:"Классический (горы)", base:[5,31,32] },
+    classic:   { name:"Классический", base:[5,31,32] },
     winter:    { name:"Зима", emoji:"❄️", base:[6,22,38], color:"#7fb6ff", glow:"rgba(150,200,255,.18)", fx:"snow" },
     spring:    { name:"Весна", emoji:"🌸", base:[8,30,26], color:"#ff9ccf", glow:"rgba(255,170,210,.14)", fx:"petals" },
     summer:    { name:"Лето", emoji:"☀️", base:[6,30,30], color:"#ffd36b", glow:"rgba(255,214,120,.16)", fx:"fireflies" },
@@ -139,7 +139,7 @@
     if(meta) meta.setAttribute("content", "rgb(" + base.join(",") + ")");
 
     var custom = "assets/bg/" + key + ".jpg";
-    var fallback = "assets/mountain-bg.jpg";
+    var fallback = "assets/bg/green-texture.jpg";
     if(key === "classic"){ setImg(fallback, false, t); }
     else probe(custom, function(ok){ setImg(ok ? custom : fallback, !ok, t); });
 
