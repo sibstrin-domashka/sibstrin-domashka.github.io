@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Домашка</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#051F20">
@@ -18,6 +18,7 @@
 <script src="app-config.js"></script>
 <script src="themes.js"></script>
 <script src="settings.js"></script>
+<script src="tabbar.js"></script>
 <style>
 :root {
   /* Домашка design system — client theme (см. артефакт "Домашка — Design System") */
@@ -293,7 +294,9 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .login-inner{text-align:center;padding:6px 0}
 .login-inner input{width:100%;max-width:220px;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:1rem;text-align:center;margin:11px 0 13px;background:var(--bg-elevated);color:var(--text-primary)}
 .err{color:var(--danger);font-size:.84rem;margin-top:8px;display:none}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 20px;border-radius:24px;font-weight:600;font-size:.85rem;z-index:300;opacity:0;transition:.25s;pointer-events:none}
+.in-tabbar{display:none !important}
+header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
+.toast{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 20px;border-radius:24px;font-weight:600;font-size:.85rem;z-index:300;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
 .panel{background:var(--surface-solid);border-radius:var(--radius-md);border:1px solid var(--border);padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
 .panel h3{font-size:1rem;color:var(--blue-dark);margin-bottom:12px}
@@ -325,13 +328,13 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     <button class="btn-outline btn-sm" id="syncBtn" style="display:none">Обновить с сайта</button>
     <button class="btn-danger btn-sm" id="clearAllBtn" style="display:none">Очистить всё</button>
     <button class="btn-outline btn-sm" id="viewToggleBtn">2 недели</button>
-    <button class="btn-outline btn-sm" id="litBtn">📚 Литература</button>
-    <button class="btn-outline btn-sm" id="sessionsBtn">🗓️ Расписание сессий</button>
-    <button class="btn-outline btn-sm" id="teachersBtn">👨‍🏫 Преподаватели</button>
-    <button class="btn-outline btn-sm" id="gradesBtn" style="display:none">📊 Оценки</button>
-    <button class="btn-outline btn-sm" id="scanBtn">📷 QR</button>
-    <button class="btn-outline btn-sm" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
-    <button class="btn-outline btn-sm" id="settingsBtn" aria-label="Настройки">⚙️ Настройки</button>
+    <button class="btn-outline btn-sm in-tabbar" id="litBtn">📚 Литература</button>
+    <button class="btn-outline btn-sm in-tabbar" id="sessionsBtn">🗓️ Расписание сессий</button>
+    <button class="btn-outline btn-sm in-tabbar" id="teachersBtn">👨‍🏫 Преподаватели</button>
+    <button class="btn-outline btn-sm in-tabbar" id="gradesBtn" style="display:none">📊 Оценки</button>
+    <button class="btn-outline btn-sm in-tabbar" id="scanBtn">📷 QR</button>
+    <button class="btn-outline btn-sm in-tabbar" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
+    <button class="btn-outline btn-sm in-tabbar" id="settingsBtn" aria-label="Настройки">⚙️ Настройки</button>
   </div>
 </header>
 <div id="errBox"></div>
@@ -933,6 +936,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       await handleCheckin();
       render();
       handleSettingsParam();
+      refreshMoreBadge();
+      if(!window.__repliesChecked && window.DomashkaSettings){ window.__repliesChecked=true; setTimeout(function(){ DomashkaSettings.checkReplies(); }, 2500); }
       if(showFeedback) toast("Расписание обновлено");
     }catch(e){
       console.error("[sync] failed:", e);
@@ -2542,6 +2547,39 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     if(showingLit) loadAndDrawLiterature();
   };
   document.getElementById("sessionsBtn").onclick=openSessions;
+  // ---------- Нижняя панель (как в приложениях) ----------
+  function closeSideScreens(){
+    if(showingLit) document.getElementById("litBtn").click();
+    if(showingTeachers) document.getElementById("teachersBtn").click();
+  }
+  function openMore(){
+    if(!window.DomashkaSettings) return;
+    var items=[
+      { icon:"🗓️", title:"Расписание сессий", sub:"Зачёты и экзамены", onClick:openSessions },
+      { icon:"👨‍🏫", title:"Преподаватели", onClick:function(){ if(showingLit) document.getElementById("litBtn").click(); if(!showingTeachers) document.getElementById("teachersBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } }
+    ];
+    if(myMembership && myMembership.join_code) items.push({ icon:"👥", title:"Моя группа", sub:"Ссылка-приглашение и заявки", badge:myMembership.pending_count||0, onClick:openGroupPanel });
+    items.push({ icon:"💡", title:"Предложить идею", sub:"Что добавить или улучшить", onClick:DomashkaSettings.idea });
+    items.push({ icon:"🐞", title:"Сообщить о проблеме", onClick:DomashkaSettings.problem });
+    items.push({ icon:"📨", title:"Мои обращения", sub:"Ответы владельца", badge:moreReplies||0, onClick:DomashkaSettings.mine });
+    if(myIsOwner) items.push({ icon:"📬", title:"Обращения пользователей", sub:"Проблемы, идеи и жалобы", badge:ownerOpen||0, onClick:DomashkaSettings.inbox });
+    items.push({ icon:"⚙️", title:"Настройки", onClick:DomashkaSettings.open });
+    DomashkaSettings.menu("Ещё", items);
+  }
+  var moreReplies=0, ownerOpen=0;
+  async function refreshMoreBadge(){
+    if(!window.DomashkaSettings || !window.DomashkaTabbar || !myUserId) return;
+    moreReplies=await DomashkaSettings.unreadReplies();
+    ownerOpen=myIsOwner ? await DomashkaSettings.inboxCount() : 0;
+    DomashkaTabbar.setBadge("more", (myMembership&&myMembership.pending_count||0)+moreReplies+ownerOpen);
+  }
+  if(window.DomashkaTabbar) DomashkaTabbar.mount([
+    { key:"home", label:"Главная", icon:"home", onClick:function(){ closeSideScreens(); DomashkaTabbar.setActive("home"); window.scrollTo(0,0); } },
+    { key:"lit", label:"Литература", icon:"book", onClick:function(){ if(showingTeachers) document.getElementById("teachersBtn").click(); if(!showingLit) document.getElementById("litBtn").click(); DomashkaTabbar.setActive("lit"); window.scrollTo(0,0); } },
+    { key:"qr", label:"Отметиться", icon:"qr", center:true, onClick:function(){ document.getElementById("scanBtn").click(); } },
+    { key:"grades", label:"Оценки", icon:"chart", onClick:function(){ if(!myMembership){ toast("Оценки появятся, когда тебя подтвердят в группе"); return; } openMyGrades(); } },
+    { key:"more", label:"Ещё", icon:"more", onClick:openMore }
+  ], "home");
   document.getElementById("settingsBtn").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.open(); else toast("Не загрузились настройки — обнови страницу"); };
   document.getElementById("scanBtn").onclick=openScanner;
   document.getElementById("cScan").onclick=closeScanner;

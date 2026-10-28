@@ -79,7 +79,7 @@
       ".ds-radio input{accent-color:" + acc + ";width:18px;height:18px}" +
       ".ds-check{display:flex;gap:10px;align-items:flex-start;margin:14px 4px 0;font-size:.88rem;line-height:1.4;cursor:pointer}" +
       ".ds-check input{accent-color:" + acc + ";width:18px;height:18px;flex-shrink:0;margin-top:1px}" +
-      ".ds-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:11px 16px;border-radius:12px;font-size:.88rem;z-index:1100;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}" +
+      ".ds-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#111;color:#fff;padding:11px 16px;border-radius:12px;font-size:.88rem;z-index:1100;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}" +
       ".ds-toast.on{opacity:1}" +
       ".ds-rep{border:1px solid " + bd + ";border-radius:14px;padding:12px;margin-top:10px;font-size:.88rem;line-height:1.45}" +
       ".ds-rep .ds-meta{color:" + sub + ";font-size:.78rem}" +
@@ -167,12 +167,14 @@
     h += '<div class="ds-sec"><h4>Помощь и документы</h4><div class="ds-list">';
     h += row({ icon:"💬", title:"Поддержка", sub:CFG.supportEmail, href:"support.html", blank:true });
     h += row({ id:"dsBug", icon:"🐞", title:"Сообщить о проблеме" });
+    h += row({ id:"dsIdea", icon:"💡", title:"Предложить идею", sub:"Что добавить или улучшить" });
+    h += row({ id:"dsMine", icon:"📨", title:"Мои обращения", sub:"Ответы владельца" });
     h += row({ icon:"🔒", title:"Политика конфиденциальности", href:"privacy.html", blank:true });
     h += row({ icon:"📄", title:"Пользовательское соглашение", href:"terms.html", blank:true });
     h += "</div></div>";
 
     if(opts.isOwner && opts.isOwner()){
-      h += '<div class="ds-sec"><h4>Владелец</h4><div class="ds-list">' + row({ id:"dsReports", icon:"🚩", title:"Жалобы пользователей" }) + "</div></div>";
+      h += '<div class="ds-sec"><h4>Владелец</h4><div class="ds-list">' + row({ id:"dsReports", icon:"📨", title:"Обращения пользователей", sub:"Проблемы, идеи и жалобы" }) + "</div></div>";
     }
 
     h += '<div class="ds-sec"><div class="ds-list">' + row({ id:"dsDelete", icon:"🗑️", title:"Удалить аккаунт", danger:true }) + "</div></div>";
@@ -190,7 +192,11 @@
     $("dsExport").onclick = exportData;
     if($("dsUnblock")) $("dsUnblock").onclick = openBlocked;
     $("dsCache").onclick = clearCache;
-    $("dsBug").onclick = function(){ report({ kind:"app", title:"Сообщить о проблеме" }); };
+    $("dsBug").onclick = function(){ report({ kind:"app" }); };
+    $("dsIdea").onclick = function(){ report({ kind:"idea" }); };
+    $("dsMine").onclick = openMine;
+    unreadReplies().then(function(n){ var m = $("dsMine"); if(n && m && !$("dsMineDot")) m.querySelector(".ds-chev").insertAdjacentHTML("beforebegin", '<span id="dsMineDot" class="ds-v" style="background:var(--danger,#E8605C);color:#fff;border-radius:999px;padding:1px 8px">' + n + "</span>"); });
+    if($("dsReports")) openCount().then(function(n){ var m = $("dsReports"); if(n && m) m.querySelector(".ds-chev").insertAdjacentHTML("beforebegin", '<span class="ds-v" style="background:var(--danger,#E8605C);color:#fff;border-radius:999px;padding:1px 8px">' + n + "</span>"); });
     if($("dsReports")) $("dsReports").onclick = openReports;
     $("dsDelete").onclick = openDelete;
   }
@@ -353,81 +359,181 @@
     ov.querySelectorAll("[data-ub]").forEach(function(x){ x.onclick = function(){ unblock(x.getAttribute("data-ub")); x.closest(".ds-rep").remove(); toast("Готово"); }; });
   }
 
-  /* ---------------- Жалоба / сообщение о проблеме ---------------- */
+  /* ---------------- Обращения: жалоба / проблема / идея ---------------- */
   var REASONS = ["Оскорбление или травля", "Неприличное содержимое", "Спам или реклама", "Чужие личные данные", "Неверная информация", "Другое"];
+  var KIND = { homework:"Жалоба на задание", topic:"Жалоба на тему", profile:"Жалоба на профиль", literature:"Жалоба на литературу", app:"Проблема", idea:"Идея", other:"Другое" };
+
+  async function sendToOwner(ins){
+    var sb = opts && opts.sb;
+    if(!sb) return { error:{ message:"offline" } };
+    var info = (opts.getInfo && opts.getInfo()) || {};
+    var full = Object.assign({ reporter_name:(info.name || "").slice(0, 120) || null, reporter_role:opts.role }, ins);
+    var r = await sb.from("content_reports").insert(full);
+    if(r.error && /reporter_name|reporter_role|column/i.test(r.error.message || "")) r = await sb.from("content_reports").insert(ins);
+    return r;
+  }
+  function mailFallback(subject, body){
+    location.href = "mailto:" + encodeURIComponent(CFG.supportEmail || "") + "?subject=" + encodeURIComponent(subject + " — " + (CFG.appName || "Домашка")) + "&body=" + encodeURIComponent(body);
+  }
+
   function report(o){
     o = o || {};
-    var isApp = o.kind === "app";
+    var isApp = o.kind === "app", isIdea = o.kind === "idea", isFree = isApp || isIdea;
     var me = opts && opts.myId ? opts.myId() : null;
     var h = "";
+    if(isIdea) h += '<p class="ds-p">Что добавить, что убрать, что неудобно? Идею прочитает владелец приложения и ответит тебе в «Настройки → Мои обращения».</p>';
+    if(isApp) h += '<p class="ds-p">Сообщение придёт владельцу приложения. Ответ появится в «Настройки → Мои обращения».</p>';
     if(o.snapshot) h += '<div class="ds-rep">' + esc(String(o.snapshot).slice(0, 300)) + "</div>";
-    if(!isApp){
+    if(!isFree){
       h += '<label class="ds-lbl">Что не так?</label>';
       REASONS.forEach(function(r, i){ h += '<label class="ds-radio"><input type="radio" name="dsReason" value="' + esc(r) + '"' + (i === 0 ? " checked" : "") + "><span>" + esc(r) + "</span></label>"; });
     }
-    h += '<label class="ds-lbl">' + (isApp ? "Опиши проблему" : "Комментарий (необязательно)") + '</label><textarea class="ds-in" id="dsRepText" maxlength="2000" placeholder="' + (isApp ? "Что случилось и на каком экране?" : "") + '"></textarea>';
+    var lbl = isIdea ? "Твоя идея" : isApp ? "Опиши проблему" : "Комментарий (необязательно)";
+    var ph = isIdea ? "Например: добавить тёмную тему для журнала..." : isApp ? "Что случилось и на каком экране?" : "";
+    h += '<label class="ds-lbl">' + lbl + '</label><textarea class="ds-in" id="dsRepText" maxlength="2000" placeholder="' + esc(ph) + '"></textarea>';
     if(o.userId && o.userId !== me) h += '<label class="ds-check"><input type="checkbox" id="dsRepBlock"><span>Скрыть от меня этого пользователя' + (o.userName ? " (" + esc(o.userName) + ")" : "") + "</span></label>";
-    h += '<div class="ds-err" id="dsRepErr"></div><button class="ds-btn" id="dsRepGo">' + (isApp ? "Отправить" : "Пожаловаться") + "</button>";
-    if(!isApp) h += '<p class="ds-p" style="font-size:.78rem">Жалобы проверяются в течение 24 часов. Нарушающее правила содержимое удаляется, а автора могут заблокировать.</p>';
-    sheet("dsSub", o.title || "Пожаловаться", h);
+    h += '<div class="ds-err" id="dsRepErr"></div><button class="ds-btn" id="dsRepGo">' + (isFree ? "Отправить" : "Пожаловаться") + "</button>";
+    if(!isFree) h += '<p class="ds-p" style="font-size:.78rem">Жалобы проверяются в течение 24 часов. Нарушающее правила содержимое удаляется, а автора могут заблокировать.</p>';
+    sheet("dsSub", o.title || (isIdea ? "💡 Предложить идею" : isApp ? "Сообщить о проблеме" : "Пожаловаться"), h);
     $("dsRepGo").onclick = async function(){
       var text = $("dsRepText").value.trim(), err = $("dsRepErr");
       var rr = document.querySelector('input[name="dsReason"]:checked');
-      var reason = isApp ? "Проблема в приложении" : (rr ? rr.value : "Другое");
-      if(isApp && !text){ err.textContent = "Напиши пару слов о проблеме"; return; }
+      var reason = isIdea ? "Идея" : isApp ? "Проблема в приложении" : (rr ? rr.value : "Другое");
+      if(isFree && text.length < 3){ err.textContent = isIdea ? "Напиши свою идею" : "Напиши пару слов о проблеме"; return; }
       this.disabled = true;
       var ins = { target_kind:o.kind || "other", target_id:o.id ? String(o.id) : null, target_user:o.userId || null,
                   snapshot:o.snapshot ? String(o.snapshot).slice(0, 2000) : null, reason:reason, comment:(text || "").slice(0, 2000) || null };
       if(isApp) ins.snapshot = (opts.role + " · " + navigator.userAgent).slice(0, 500);
-      var r = opts && opts.sb ? await opts.sb.from("content_reports").insert(ins) : { error:{ message:"offline" } };
+      var r = await sendToOwner(ins);
       this.disabled = false;
       if($("dsRepBlock") && $("dsRepBlock").checked) block(o.userId, o.userName);
       if(r.error){
-        // Сервер не ответил — отправим письмом, чтобы жалоба не потерялась.
-        location.href = "mailto:" + encodeURIComponent(CFG.supportEmail || "") + "?subject=" + encodeURIComponent((isApp ? "Проблема" : "Жалоба") + " — " + (CFG.appName || "Домашка")) +
-          "&body=" + encodeURIComponent(reason + "\n" + (text || "") + "\n\n" + (o.snapshot || "") + "\n" + (o.id ? "ID: " + o.id : ""));
-        close("dsSub"); return;
+        if(/idea|check/i.test(r.error.message || "") && isIdea){
+          // сервер ещё без «идей» — сохраним как «другое», чтобы не потерять
+          ins.target_kind = "other"; r = await sendToOwner(ins);
+        }
+        if(r.error){ mailFallback(KIND[o.kind] || "Обращение", reason + "\n" + (text || "") + "\n\n" + (o.snapshot || "") + "\n" + (o.id ? "ID: " + o.id : "")); close("dsSub"); return; }
       }
       close("dsSub");
-      toast(isApp ? "Спасибо! Сообщение отправлено" : "Жалоба отправлена. Спасибо!");
+      toast(isIdea ? "Спасибо за идею! 💡" : isApp ? "Спасибо! Сообщение отправлено" : "Жалоба отправлена. Спасибо!");
     };
   }
 
-  /* ---------------- Жалобы — для владельца ---------------- */
-  async function openReports(){
-    var ov = sheet("dsSub", "Жалобы пользователей", '<p class="ds-p">Загрузка...</p>');
-    var r = await opts.sb.from("content_reports").select("*").order("created_at", { ascending:false }).limit(100);
+  /* ---------------- Мои обращения (ответы владельца) ---------------- */
+  function seenKey(){ return "domashka_inbox_seen_" + (opts && opts.role); }
+  async function openMine(){
+    var ov = sheet("dsSub", "📨 Мои обращения", '<p class="ds-p">Загрузка...</p>');
+    var me = opts.myId && opts.myId();
+    var q = opts.sb.from("content_reports").select("*");
+    if(me) q = q.eq("reporter", me);
+    var r = await q.order("created_at", { ascending:false }).limit(50);
     var body = ov.querySelector(".ds-body");
     if(r.error){ body.innerHTML = '<p class="ds-p">Не загрузилось: ' + esc(r.error.message) + "</p>"; return; }
     var list = r.data || [];
-    var open_ = list.filter(function(x){ return x.status === "open"; });
-    var h = '<p class="ds-p">Открытых: <b>' + open_.length + "</b>. Отвечать нужно в течение 24 часов (требование магазинов).</p>";
-    if(!list.length) h += '<p class="ds-p">Жалоб нет 🎉</p>';
-    var KIND = { homework:"Задание", topic:"Тема", profile:"Профиль", literature:"Литература", app:"Проблема в приложении", other:"Другое" };
+    var h = list.length ? "" : '<p class="ds-p">Ты пока ничего не отправлял(а).</p>';
     list.forEach(function(x){
-      h += '<div class="ds-rep" style="' + (x.status === "open" ? "" : "opacity:.55") + '"><div class="ds-meta">' + esc(KIND[x.target_kind] || x.target_kind) + " · " +
-        new Date(x.created_at).toLocaleString("ru-RU") + (x.status === "open" ? "" : " · закрыта") + "</div>" +
-        "<b>" + esc(x.reason) + "</b>" + (x.comment ? "<div>" + esc(x.comment) + "</div>" : "") +
+      h += '<div class="ds-rep"><div class="ds-meta">' + esc(KIND[x.target_kind] || "Обращение") + " · " + new Date(x.created_at).toLocaleString("ru-RU") +
+        " · " + (x.owner_reply ? "есть ответ" : x.status === "resolved" ? "рассмотрено" : "ждёт ответа") + "</div>" +
+        (x.target_kind === "idea" || x.target_kind === "app" ? "" : "<b>" + esc(x.reason) + "</b>") +
+        (x.comment ? "<div>" + esc(x.comment) + "</div>" : "") +
+        (x.owner_reply ? '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:rgba(142,182,155,.14)"><div class="ds-meta">Ответ владельца' +
+          (x.replied_at ? " · " + new Date(x.replied_at).toLocaleString("ru-RU") : "") + "</div>" + esc(x.owner_reply) + "</div>" : "") + "</div>";
+    });
+    body.innerHTML = h;
+    lsSet(seenKey(), new Date().toISOString());
+    var dot = $("dsMineDot"); if(dot) dot.remove();
+  }
+  async function unreadReplies(){
+    try{
+      if(!opts || !opts.sb || !opts.myId || !opts.myId()) return 0;
+      var since = lsGet(seenKey(), "1970-01-01T00:00:00Z");
+      var r = await opts.sb.from("content_reports").select("id,replied_at").eq("reporter", opts.myId()).gt("replied_at", since);
+      return (r.data || []).length;
+    }catch(e){ return 0; }
+  }
+  async function checkReplies(){
+    var n = await unreadReplies();
+    if(n) toast("📨 Владелец ответил на твоё обращение — «Настройки → Мои обращения»");
+    return n;
+  }
+
+  /* ---------------- Обращения — для владельца ---------------- */
+  var inboxFilter = "all";
+  async function openReports(){
+    var ov = sheet("dsSub", "📨 Обращения", '<p class="ds-p">Загрузка...</p>');
+    var r = await opts.sb.from("content_reports").select("*").order("created_at", { ascending:false }).limit(200);
+    var body = ov.querySelector(".ds-body");
+    if(r.error){ body.innerHTML = '<p class="ds-p">Не загрузилось: ' + esc(r.error.message) + "</p>"; return; }
+    var all = r.data || [];
+    function group(x){ return x.target_kind === "idea" ? "idea" : x.target_kind === "app" ? "app" : "report"; }
+    var cnt = { all:0, app:0, idea:0, report:0 };
+    all.forEach(function(x){ if(x.status === "open"){ cnt.all++; cnt[group(x)]++; } });
+    var tabs = [["all","Все"],["app","🐞 Проблемы"],["idea","💡 Идеи"],["report","🚩 Жалобы"]];
+    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">' + tabs.map(function(t){
+      return '<button class="ds-mini" data-f="' + t[0] + '" style="' + (inboxFilter === t[0] ? "background:var(--accent,#4FD1A5);color:#06201C;border-color:transparent" : "") + '">' + t[1] + (cnt[t[0]] ? " · " + cnt[t[0]] : "") + "</button>";
+    }).join("") + "</div>";
+    h += '<p class="ds-p" style="font-size:.8rem">Открытых: <b>' + cnt.all + "</b>. На жалобы нужно реагировать в течение 24 часов (требование магазинов).</p>";
+    var list = all.filter(function(x){ return inboxFilter === "all" || group(x) === inboxFilter; });
+    if(!list.length) h += '<p class="ds-p">Пусто 🎉</p>';
+    list.forEach(function(x){
+      var who = (x.reporter_name || "Без имени") + (x.reporter_role === "teacher" ? " · преподаватель" : x.reporter_role === "student" ? " · студент" : "");
+      h += '<div class="ds-rep" style="' + (x.status === "open" ? "" : "opacity:.6") + '"><div class="ds-meta">' + esc(KIND[x.target_kind] || x.target_kind) + " · " + esc(who) + " · " +
+        new Date(x.created_at).toLocaleString("ru-RU") + (x.status === "open" ? "" : " · закрыто") + "</div>" +
+        (group(x) === "report" ? "<b>" + esc(x.reason) + "</b>" : "") + (x.comment ? '<div style="white-space:pre-wrap">' + esc(x.comment) + "</div>" : "") +
         (x.snapshot ? '<div class="ds-meta" style="margin-top:4px">«' + esc(x.snapshot) + "»</div>" : "") +
+        (x.owner_reply ? '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:rgba(142,182,155,.14)"><div class="ds-meta">Твой ответ</div>' + esc(x.owner_reply) + "</div>" : "") +
+        (x.reporter ? '<textarea class="ds-in" data-rtext="' + x.id + '" placeholder="' + (x.owner_reply ? "Изменить ответ..." : "Ответить автору...") + '" style="min-height:60px;margin-top:8px"></textarea>' : "") +
         '<div class="ds-acts">' +
+        (x.reporter ? '<button class="ds-mini" data-reply="' + x.id + '">Ответить</button>' : "") +
         (x.target_kind === "topic" && x.target_id && x.status === "open" ? '<button class="ds-mini" data-deltopic="' + esc(x.target_id) + '" data-rid="' + x.id + '">Удалить тему</button>' : "") +
-        (x.status === "open" ? '<button class="ds-mini" data-done="' + x.id + '">Закрыть жалобу</button>' : "") +
+        (x.status === "open" ? '<button class="ds-mini" data-done="' + x.id + '">Закрыть</button>' : "") +
         "</div></div>";
     });
     body.innerHTML = h;
     async function resolve(id){ await opts.sb.from("content_reports").update({ status:"resolved", resolved_at:new Date().toISOString() }).eq("id", id); }
+    body.querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ inboxFilter = b.getAttribute("data-f"); openReports(); }; });
     body.querySelectorAll("[data-done]").forEach(function(b){ b.onclick = async function(){ await resolve(b.getAttribute("data-done")); openReports(); }; });
+    body.querySelectorAll("[data-reply]").forEach(function(b){ b.onclick = async function(){
+      var id = b.getAttribute("data-reply"), ta = body.querySelector('[data-rtext="' + id + '"]'), t = ta ? ta.value.trim() : "";
+      if(!t){ toast("Напиши ответ"); return; }
+      var u = await opts.sb.from("content_reports").update({ owner_reply:t.slice(0, 2000), replied_at:new Date().toISOString(), status:"resolved", resolved_at:new Date().toISOString() }).eq("id", id);
+      if(u.error){ toast("Не отправилось: " + u.error.message); return; }
+      toast("Ответ отправлен"); openReports();
+    }; });
     body.querySelectorAll("[data-deltopic]").forEach(function(b){ b.onclick = async function(){
       var d = await opts.sb.from("homework_topics").delete().eq("id", b.getAttribute("data-deltopic"));
       if(d.error){ toast("Не удалилось: " + d.error.message); return; }
       await resolve(b.getAttribute("data-rid")); toast("Тема удалена"); openReports();
     }; });
   }
+  async function openCount(){
+    try{ var r = await opts.sb.from("content_reports").select("id").eq("status", "open"); return (r.data || []).length; }catch(e){ return 0; }
+  }
+
+  /* ---------------- Меню «Ещё» ---------------- */
+  function menu(title, list){
+    var h = '<div class="ds-sec" style="margin-top:10px"><div class="ds-list">';
+    list.forEach(function(it, i){
+      h += row({ id:"dsMenu" + i, icon:it.icon, title:it.title, sub:it.sub, danger:it.danger,
+        right:(it.badge ? '<span class="ds-v" style="background:var(--danger,#E8605C);color:#fff;border-radius:999px;padding:1px 8px">' + it.badge + "</span>" : "") + '<span class="ds-chev">›</span>' });
+    });
+    h += "</div></div>";
+    sheet("dsMenu", title, h);
+    list.forEach(function(it, i){ $("dsMenu" + i).onclick = function(){ close("dsMenu"); it.onClick && it.onClick(); }; });
+  }
 
   window.DomashkaSettings = {
     init: function(o){ opts = o; injectCss(); },
+    menu: menu,
+    unreadReplies: unreadReplies,
     open: open,
     report: report,
+    idea: function(){ report({ kind:"idea" }); },
+    problem: function(){ report({ kind:"app" }); },
+    mine: openMine,
+    inbox: openReports,
+    inboxCount: openCount,
+    checkReplies: checkReplies,
     toast: toast,
     isBlocked: isBlocked,
     blockedList: blockedList,

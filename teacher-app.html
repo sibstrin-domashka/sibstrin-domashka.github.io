@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Домашка — Учителям</title>
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest-teacher.json">
@@ -12,6 +12,7 @@
 <script src="app-config.js"></script>
 <script src="themes.js"></script>
 <script src="settings.js"></script>
+<script src="tabbar.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -93,6 +94,10 @@ header{
 }
 .hw-btn:active{background:rgba(79,209,165,.1)}
 .hw-btn.att-btn{margin-top:8px;border-color:var(--border);color:var(--text-primary)}
+header{padding-top:calc(18px + env(safe-area-inset-top,0px)) !important}
+.hw-btn.qr-btn{margin-top:8px;background:var(--accent);color:#052421;border-color:var(--accent);font-weight:700}
+.qr-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px auto 0;max-width:340px}
+.qr-bar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
 .empty-day{
   text-align:center;color:var(--text-secondary);padding:50px 20px;font-size:.92rem;line-height:1.5;
 }
@@ -276,7 +281,7 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
 .attach-item .rm{background:none;border:none;color:var(--danger);font-size:1.3rem;cursor:pointer;padding:0 6px}
 
 .toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:calc(96px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   background:var(--bg-card-2);color:var(--text-primary);padding:12px 18px;border-radius:12px;
   font-size:.85rem;box-shadow:var(--shadow);z-index:100;opacity:0;transition:opacity .2s;
   border:1px solid var(--border);max-width:90vw;text-align:center;
@@ -293,13 +298,13 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
   <header>
     <div class="chip"><span class="dot"></span><span id="nameChip">—</span></div>
     <div style="display:flex;gap:12px;align-items:center">
-      <button class="logout" id="sickBtn" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:7px 12px">🤒 Меня не будет</button>
+      <button class="logout" id="sickBtn" style="display:none">🤒 Меня не будет</button>
       <button class="logout" id="settingsBtn" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:7px 12px" aria-label="Настройки">⚙️</button>
-      <button class="logout" id="logoutBtn">Выйти</button>
+      <button class="logout" id="logoutBtn" style="display:none">Выйти</button>
     </div>
   </header>
 
-  <div class="tabs">
+  <div class="tabs" style="display:none">
     <button class="tab on" id="tabDay">День</button>
     <button class="tab" id="tabWeeks">2 недели</button>
     <button class="tab" id="tabJournal">Журнал</button>
@@ -414,7 +419,8 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
       <div id="attGroups" class="chips"></div>
       <label>Дата пары</label>
       <input type="date" id="attDate">
-      <button class="btn" id="qrStartBtn" style="width:100%;margin-top:12px">📱 Отметка по QR-коду</button>
+      <button class="btn" id="qrStartBtn" style="width:100%;margin-top:12px;font-size:1.05rem;padding:16px">📱 Показать QR-код для отметки</button>
+      <div class="modal-sub" style="margin:6px 0 0;text-align:center">Студенты сканируют код в приложении (кнопка «Отметиться» внизу). Код меняется каждые 30 секунд.</div>
       <div class="att-tools"><button class="btn btn-outline" id="attAllBtn">Все были</button><span id="attSummary" class="modal-sub" style="margin:0"></span></div>
       <div id="attList" class="att-list"></div>
       <div class="modal-actions">
@@ -512,8 +518,9 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
 <div class="overlay" id="qrOverlay" style="align-items:center">
   <div class="modal" style="border-radius:20px;text-align:center;max-width:480px">
     <h3 id="qrTitle">Отметка по QR</h3>
-    <div class="modal-sub">Студенты сканируют код камерой телефона. Код меняется каждые 20 секунд.</div>
+    <div class="modal-sub">Студенты сканируют код в приложении «Домашка» (кнопка «Отметиться») или камерой телефона. Код меняется каждые 30 секунд.</div>
     <div id="qrBox" style="background:#fff;border-radius:16px;padding:14px;display:inline-block;margin:6px auto"></div>
+    <div class="qr-bar"><i id="qrBar"></i></div>
     <div id="qrTimer" class="modal-sub" style="margin:8px 0 0"></div>
     <div id="qrCount" style="font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.3rem;margin:10px 0"></div>
     <div class="modal-actions">
@@ -639,6 +646,10 @@ async function loadTeacherProfile(){
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
   try{ var sv = localStorage.getItem("domashka_teacher_view"); if(["weeks", "lit", "journal", "plan"].indexOf(sv) !== -1) currentView = sv; }catch(e){}
   setView(currentView);
+  if(window.DomashkaSettings){
+    DomashkaSettings.unreadReplies().then(function(n){ tbReplies = n; if(window.DomashkaTabbar) DomashkaTabbar.setBadge("more", n); });
+    setTimeout(function(){ DomashkaSettings.checkReplies(); }, 2500);
+  }
   if(settingsParam && window.DomashkaSettings){
     var which = settingsParam; settingsParam = null;
     try{ history.replaceState(null, "", location.pathname); }catch(e){}
@@ -803,15 +814,16 @@ function renderDay(){
         (hasHw ? "✓ Задание добавлено" : "Задание ещё не добавлено") +
       '</div>' +
       '<button class="hw-btn">' + (hasHw ? "Изменить задание" : "Добавить задание") + '</button>' +
-      '<div style="display:flex;gap:8px"><button class="hw-btn att-btn" style="flex:1">✓ Отметки и оценки</button><button class="hw-btn att-btn qr-btn" style="flex:0 0 auto;padding:11px 14px">📱 QR</button></div>' +
+      '<button class="hw-btn qr-btn">📱 QR-отметка на паре</button>' +
+      '<button class="hw-btn att-btn">✓ Отметки и оценки</button>' +
       '<button class="hw-btn att-btn chg-btn">⚠ Отмена / замена</button>';
 
     card.querySelector(".hw-btn").onclick = function(){ openHwModal(c); };
     card.querySelector(".att-btn").onclick = function(){ openHwModal(c, "paneAtt"); };
     card.querySelector(".chg-btn").onclick = function(){ openChange(c); };
-    card.querySelector(".qr-btn").onclick = async function(){
+    card.querySelector(".qr-btn").onclick = function(){
       openHwModal(c, "paneAtt");
-      setTimeout(function(){ document.getElementById("qrStartBtn").click(); }, 350);
+      setTimeout(function(){ startQr(c.rows, document.getElementById("attDate").value); }, 350);
     };
     wrap.appendChild(card);
   });
@@ -832,6 +844,7 @@ function setView(v){
   document.getElementById("litView").style.display = v === "lit" ? "block" : "none";
   document.getElementById("dayView").style.display = v === "day" ? "block" : "none";
   document.getElementById("weeksView").style.display = v === "weeks" ? "block" : "none";
+  if(window.DomashkaTabbar) DomashkaTabbar.setActive(v === "plan" || v === "lit" ? "more" : v);
   renderAll();
 }
 document.getElementById("tabDay").onclick = function(){ setView("day"); };
@@ -839,6 +852,29 @@ document.getElementById("tabWeeks").onclick = function(){ setView("weeks"); };
 document.getElementById("tabLit").onclick = function(){ setView("lit"); };
 document.getElementById("tabJournal").onclick = function(){ setView("journal"); };
 document.getElementById("tabPlan").onclick = function(){ setView("plan"); };
+
+/* ---------- Нижняя панель (как в приложениях) ---------- */
+var tbReplies = 0;
+function openTeacherMore(){
+  if(!window.DomashkaSettings) return;
+  DomashkaSettings.menu("Ещё", [
+    { icon:"📋", title:"План курса", sub:"Задания по порядку на семестр", onClick:function(){ setView("plan"); window.scrollTo(0,0); } },
+    { icon:"📚", title:"Литература", sub:"Книги и пособия для групп", onClick:function(){ setView("lit"); window.scrollTo(0,0); } },
+    { icon:"🤒", title:"Меня не будет", sub:"Отмена, замена или онлайн", onClick:function(){ document.getElementById("sickBtn").click(); } },
+    { icon:"💡", title:"Предложить идею", onClick:DomashkaSettings.idea },
+    { icon:"🐞", title:"Сообщить о проблеме", onClick:DomashkaSettings.problem },
+    { icon:"📨", title:"Мои обращения", sub:"Ответы владельца", badge:tbReplies||0, onClick:DomashkaSettings.mine },
+    { icon:"⚙️", title:"Настройки", onClick:DomashkaSettings.open },
+    { icon:"🚪", title:"Выйти", onClick:function(){ document.getElementById("logoutBtn").click(); } }
+  ]);
+}
+if(window.DomashkaTabbar) DomashkaTabbar.mount([
+  { key:"day", label:"День", icon:"calendar", onClick:function(){ setView("day"); window.scrollTo(0,0); } },
+  { key:"weeks", label:"2 недели", icon:"grid", onClick:function(){ setView("weeks"); window.scrollTo(0,0); } },
+  { key:"qr", label:"QR-отметка", icon:"qr", center:true, onClick:function(){ quickQr(); } },
+  { key:"journal", label:"Журнал", icon:"journal", onClick:function(){ setView("journal"); window.scrollTo(0,0); } },
+  { key:"more", label:"Ещё", icon:"more", onClick:openTeacherMore }
+], "day");
 
 function renderAll(){
   if(currentView === "weeks") renderWeeks();
@@ -1320,66 +1356,122 @@ document.getElementById("sickSave").onclick = async function(){
 };
 
 /* ================= QR check-in ================= */
-var qr = { row: null, date: null, secret: null, timer: null, poll: null };
+// Один QR на всю пару: для поточной лекции он работает сразу для всех групп.
+// Код меняется каждые 30 секунд — фото кода, отправленное другу домой,
+// быстро перестаёт работать.
+var QR_WINDOW = 30;
+var qr = { rows: [], date: null, secret: null, timer: null, poll: null, students: {} };
 function randomSecret(){ var a = new Uint8Array(16); crypto.getRandomValues(a); return Array.prototype.map.call(a, function(b){ return ("0" + b.toString(16)).slice(-2); }).join(""); }
 async function qrCodeFor(secret, w){
   var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret + ":" + w));
   return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("").slice(0, 8);
 }
 function studentAppUrl(){ return window.location.href.replace(/[^\/]*([?#].*)?$/, "") + "index_3_updated.html"; }
+var qrLastW = null;
 async function drawQr(){
-  var w = Math.floor(Date.now() / 20000), code = await qrCodeFor(qr.secret, w);
-  var url = studentAppUrl() + "?checkin=" + qr.row.id + "." + qr.date + "." + code;
+  var w = Math.floor(Date.now() / (QR_WINDOW * 1000));
+  var left = QR_WINDOW - Math.floor((Date.now() / 1000) % QR_WINDOW);
+  document.getElementById("qrTimer").textContent = "Новый код через " + left + " с";
+  var bar = document.getElementById("qrBar"); if(bar) bar.style.width = (left / QR_WINDOW * 100) + "%";
+  if(w === qrLastW) return;
+  qrLastW = w;
+  var code = await qrCodeFor(qr.secret, w);
+  var url = studentAppUrl() + "?checkin=" + qr.rows[0].id + "." + qr.date + "." + code;
   if(typeof qrcode === "undefined"){ document.getElementById("qrBox").textContent = "Не загрузилась библиотека QR — обновите страницу"; return; }
   var q = qrcode(0, "M"); q.addData(url); q.make();
   document.getElementById("qrBox").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
-  var svg = document.querySelector("#qrBox svg"); if(svg){ svg.style.width = "min(72vw, 320px)"; svg.style.height = "auto"; svg.style.display = "block"; }
-  var left = 20 - Math.floor((Date.now() / 1000) % 20);
-  document.getElementById("qrTimer").textContent = "Новый код через " + left + " с";
+  var svg = document.querySelector("#qrBox svg"); if(svg){ svg.style.width = "min(78vw, 340px)"; svg.style.height = "auto"; svg.style.display = "block"; }
 }
+function qrTotal(){ var n = 0; qr.rows.forEach(function(r){ n += (qr.students[r.id] || []).length; }); return n; }
 async function pollQr(){
-  var r = await sb.from("qr_checkins").select("roster_id").eq("schedule_slot_id", qr.row.id).eq("lesson_date", qr.date);
-  var n = r.data ? r.data.length : 0;
-  document.getElementById("qrCount").textContent = "Отметились: " + n + (attStudents.length ? " из " + attStudents.length : "");
-  return r.data || [];
+  var r = await sb.from("qr_checkins").select("schedule_slot_id,roster_id").in("schedule_slot_id", qr.rows.map(function(x){ return x.id; })).eq("lesson_date", qr.date);
+  var got = r.data || [], tot = qrTotal();
+  document.getElementById("qrCount").textContent = "Отметились: " + got.length + (tot ? " из " + tot : "");
+  return got;
 }
-function stopQrTimers(){ clearInterval(qr.timer); clearInterval(qr.poll); qr.timer = qr.poll = null; }
-document.getElementById("qrStartBtn").onclick = async function(){
-  if(!attRow) return;
-  var date = document.getElementById("attDate").value;
+function stopQrTimers(){ clearInterval(qr.timer); clearInterval(qr.poll); qr.timer = qr.poll = null; qrLastW = null; }
+async function startQr(rows, date){
+  if(!rows || !rows.length) return;
   if(!date){ showToast("Укажите дату"); return; }
-  var ex = await sb.from("qr_sessions").select("secret,active").eq("schedule_slot_id", attRow.id).eq("lesson_date", date).maybeSingle();
-  var secret = ex.data && ex.data.secret;
-  if(!secret){
-    secret = randomSecret();
-    var ins = await sb.from("qr_sessions").upsert({ schedule_slot_id: attRow.id, lesson_date: date, secret: secret, active: true }, { onConflict: "schedule_slot_id,lesson_date" });
-    if(ins.error){ showToast("Не получилось запустить QR: " + ins.error.message); return; }
-  } else if(!ex.data.active){
-    await sb.from("qr_sessions").update({ active: true }).eq("schedule_slot_id", attRow.id).eq("lesson_date", date);
+  var ids = rows.map(function(x){ return x.id; });
+  var ex = await sb.from("qr_sessions").select("schedule_slot_id,secret").in("schedule_slot_id", ids).eq("lesson_date", date);
+  if(ex.error){ showToast("QR не работает: запустите в Supabase файл 16_changes_qr_plan.sql (" + ex.error.message + ")"); return; }
+  var secret = ((ex.data || [])[0] || {}).secret || randomSecret();
+  var up = await sb.from("qr_sessions").upsert(ids.map(function(id){ return { schedule_slot_id: id, lesson_date: date, secret: secret, active: true }; }), { onConflict: "schedule_slot_id,lesson_date" });
+  if(up.error){ showToast("Не получилось запустить QR: " + up.error.message); return; }
+  qr.rows = rows; qr.date = date; qr.secret = secret; qr.students = {};
+  for(var i = 0; i < rows.length; i++){
+    try{ qr.students[rows[i].id] = await groupStudents(rows[i].group_id); }catch(e){ qr.students[rows[i].id] = []; }
   }
-  qr.row = attRow; qr.date = date; qr.secret = secret;
-  document.getElementById("qrTitle").textContent = "Отметка · " + ((attRow.groups && attRow.groups.name) || "") + " гр.";
+  document.getElementById("qrTitle").textContent = "📱 Отметка · " + rows.map(function(r){ return (r.groups && r.groups.name) || ""; }).join(", ") + " гр.";
   document.getElementById("qrOverlay").classList.add("active");
-  await drawQr(); await pollQr();
   stopQrTimers();
+  await drawQr(); await pollQr();
   qr.timer = setInterval(drawQr, 1000);
   qr.poll = setInterval(pollQr, 3000);
+}
+document.getElementById("qrStartBtn").onclick = function(){
+  if(!activeCard) return;
+  startQr(activeCard.rows, document.getElementById("attDate").value);
 };
-document.getElementById("qrClose").onclick = function(){ stopQrTimers(); document.getElementById("qrOverlay").classList.remove("active"); };
+document.getElementById("qrClose").onclick = function(){ stopQrTimers(); document.getElementById("qrOverlay").classList.remove("active"); showToast("QR свёрнут — студенты пока не смогут отметиться"); };
 document.getElementById("qrFinish").onclick = async function(){
-  var got = await pollQr(), here = {};
-  got.forEach(function(x){ here[x.roster_id] = true; });
-  stopQrTimers();
-  await sb.from("qr_sessions").update({ active: false }).eq("schedule_slot_id", qr.row.id).eq("lesson_date", qr.date);
-  document.getElementById("qrOverlay").classList.remove("active");
-  // Everyone who scanned = "Был", the rest = "Нет" (late/excused marks are kept). Teacher can still fix by hand.
-  attStudents.forEach(function(s){
-    if(here[s.roster_id]) attState[s.roster_id] = attState[s.roster_id] === "late" ? "late" : "present";
-    else if(attState[s.roster_id] !== "excused") attState[s.roster_id] = "absent";
-  });
-  drawAttendance();
-  showToast("Отметки по QR перенесены — проверьте и нажмите «Сохранить»");
+  var btn = this; btn.disabled = true;
+  try{
+    var got = await pollQr(), here = {};
+    got.forEach(function(x){ here[x.schedule_slot_id + "|" + x.roster_id] = true; });
+    stopQrTimers();
+    await sb.from("qr_sessions").update({ active: false }).in("schedule_slot_id", qr.rows.map(function(x){ return x.id; })).eq("lesson_date", qr.date);
+    document.getElementById("qrOverlay").classList.remove("active");
+    var savedOther = 0;
+    for(var i = 0; i < qr.rows.length; i++){
+      var row = qr.rows[i], studs = qr.students[row.id] || [];
+      if(attRow && row.id === attRow.id && document.getElementById("attDate").value === qr.date){
+        // Открытая сейчас группа: переносим в список, учитель проверит и сохранит.
+        attStudents.forEach(function(s){
+          if(here[row.id + "|" + s.roster_id]) attState[s.roster_id] = attState[s.roster_id] === "late" ? "late" : "present";
+          else if(attState[s.roster_id] !== "excused") attState[s.roster_id] = "absent";
+        });
+        drawAttendance();
+        continue;
+      }
+      // Остальные группы потока сохраняем сразу.
+      var cur = await sb.from("attendance").select("roster_id,status").eq("schedule_slot_id", row.id).eq("lesson_date", qr.date);
+      var prev = {}; (cur.data || []).forEach(function(a){ prev[a.roster_id] = a.status; });
+      var out = studs.map(function(s){
+        var st = here[row.id + "|" + s.roster_id] ? (prev[s.roster_id] === "late" ? "late" : "present") : (prev[s.roster_id] === "excused" ? "excused" : "absent");
+        return { schedule_slot_id: row.id, lesson_date: qr.date, roster_id: s.roster_id, status: st };
+      }).filter(function(x){ return x.status !== "present"; });
+      await sb.from("attendance_sessions").upsert({ schedule_slot_id: row.id, lesson_date: qr.date }, { onConflict: "schedule_slot_id,lesson_date" });
+      await sb.from("attendance").delete().eq("schedule_slot_id", row.id).eq("lesson_date", qr.date);
+      if(out.length) await sb.from("attendance").insert(out);
+      savedOther++;
+    }
+    showToast(attRow ? "Отметки по QR перенесены — проверьте и нажмите «Сохранить»" + (savedOther ? " (другие группы потока уже сохранены)" : "") : "Посещаемость по QR сохранена");
+  }catch(e){ showToast("Ошибка: " + e.message); }
+  finally{ btn.disabled = false; }
 };
+
+/* Быстрый QR: текущая или ближайшая пара сегодня */
+function slotMinutes(i){ var m = /(\d+):(\d+)\D+(\d+):(\d+)/.exec(TIMES[i] || ""); return m ? [m[1] * 60 + +m[2], m[3] * 60 + +m[4]] : [0, 0]; }
+function todaysCards(){
+  var wd = weekAndDayFromAbs(todayAbsIndex());
+  return mergeLessons(lessonsCache.filter(function(l){ return l.week_number === wd.week && l.day_index === wd.day; }))
+    .sort(function(a, b){ return a.slot_index - b.slot_index; });
+}
+function pickQrCard(){
+  var list = todaysCards(); if(!list.length) return null;
+  var now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  for(var i = 0; i < list.length; i++){ var t = slotMinutes(list[i].slot_index); if(m >= t[0] - 15 && m <= t[1]) return list[i]; }
+  for(var j = 0; j < list.length; j++){ if(slotMinutes(list[j].slot_index)[0] > m) return list[j]; }
+  return list[list.length - 1];
+}
+function quickQr(){
+  var c = pickQrCard();
+  if(!c){ showToast("Сегодня по расписанию пар нет. Откройте нужную пару и нажмите «📱 QR»"); return; }
+  openHwModal(c, "paneAtt");
+  setTimeout(function(){ startQr(c.rows, document.getElementById("attDate").value || isoDate(new Date())); }, 350);
+}
 
 /* ================= Course plan ================= */
 var planItems = [], planIssued = [];
