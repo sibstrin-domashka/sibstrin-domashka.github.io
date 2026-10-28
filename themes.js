@@ -138,20 +138,28 @@
     var meta = document.querySelector('meta[name="theme-color"]');
     if(meta) meta.setAttribute("content", "rgb(" + base.join(",") + ")");
 
-    var custom = "assets/bg/" + key + ".jpg";
-    var fallback = "assets/bg/green-texture.jpg";
-    if(key === "classic"){ setImg(fallback, false, t); }
-    else probe(custom, function(ok){ setImg(ok ? custom : fallback, !ok, t); });
+    // Картинку ищем и в папке assets/bg/, и просто в корне сайта
+    // (если файл загрузили на GitHub без папки).
+    var custom = ["assets/bg/" + key + ".jpg", key + ".jpg"];
+    var fallback = ["assets/bg/green-texture.jpg", "green-texture.jpg", "assets/mountain-bg.jpg"];
+    if(key === "classic"){ firstOk(fallback, function(u){ setImg(u, false, t); }); }
+    else firstOk(custom, function(u){
+      if(u) setImg(u, false, t);
+      else firstOk(fallback, function(f){ setImg(f, true, t); });
+    });
 
     fxKind = (fxOn() && !reducedMotion()) ? (t.fx || null) : null;
     parts = []; startFx();
   }
 
+  function firstOk(list, cb, i){
+    i = i || 0;
+    if(i >= list.length){ cb(null); return; }
+    probe(list[i], function(ok){ if(ok) cb(list[i]); else firstOk(list, cb, i + 1); });
+  }
   function setImg(url, recolor, t){
-    probe(url, function(ok){
-      imgEl.style.backgroundImage = ok ? 'url("' + url + '")' : "none";
-      colorEl.style.background = (recolor && t.color) ? t.color : "transparent";
-    });
+    imgEl.style.backgroundImage = url ? 'url("' + url + '")' : "none";
+    colorEl.style.background = (url && recolor && t.color) ? t.color : "transparent";
   }
 
   /* ---------------- Анимация ---------------- */

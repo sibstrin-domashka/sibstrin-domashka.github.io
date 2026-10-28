@@ -6,13 +6,15 @@
 <title>Домашка — Владелец</title>
 <link rel="manifest" href="manifest-owner.json">
 <meta name="theme-color" content="#26784B">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Домашка · Владелец">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
+<script src="settings.js"></script>
 <style>
 :root{
   /* Домашка design system — owner theme (см. артефакт "Домашка — Design System") */
@@ -143,6 +145,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     <div class="stat-card"><div class="icon">⏳</div><div class="num" id="statTrial">–</div><div class="cap">На пробном</div></div>
   </div>
 
+  <button class="btn-add" id="inboxBtn" style="margin-bottom:16px">📬 Обращения пользователей <span id="inboxCount"></span></button>
   <div class="tabs">
     <button class="tab-btn active" id="tabStudents">Ученики</button>
     <button class="tab-btn" id="tabTeachers">Преподаватели</button>
@@ -162,7 +165,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 (function(){
   "use strict";
   const SUPABASE_URL = "https://wsrrqwvemfliwzsqlkvg.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...mcnzJ6Fh5eTCJSYXQ6rMkBHAbL5JPIC1UId1DlRfuDY";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzcnJxd3ZlbWZsaXd6c3Fsa3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMDc1NDYsImV4cCI6MjEwNDc4MzU0Nn0.mcnzJ6Fh5eTCJSYXQ6rMkBHAbL5JPIC1UId1DlRfuDY";
   const sb = (typeof supabase !== "undefined") ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -208,6 +211,11 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       return;
     }
     document.getElementById("nameLine").textContent=myProf.data.full_name || "Владелец";
+    if(window.DomashkaSettings){
+      DomashkaSettings.init({ sb:sb, role:"student", loginUrl:"auth.html", myId:function(){ return session.user.id; },
+        isOwner:function(){ return true; }, getInfo:function(){ return { name:myProf.data.full_name||"Владелец", subtitle:"Владелец" }; } });
+      DomashkaSettings.inboxCount().then(function(n){ document.getElementById("inboxCount").textContent = n ? "· " + n + " новых" : ""; });
+    }
     myGroupIdForUpload=myProf.data.group_id;
 
     var groupsRes=await sb.from("groups").select("id,name");
@@ -344,6 +352,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     document.getElementById("tabTeachers").classList.remove("active");
     loadStudents(allGroups);
   };
+  document.getElementById("inboxBtn").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.inbox(); };
   document.getElementById("tabTeachers").onclick=function(){
     document.getElementById("tabTeachers").classList.add("active");
     document.getElementById("tabStudents").classList.remove("active");
