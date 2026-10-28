@@ -15,6 +15,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
+<script src="themes.js"></script>
+<script src="settings.js"></script>
 <style>
 :root {
   /* Домашка design system — client theme (см. артефакт "Домашка — Design System") */
@@ -249,6 +252,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .chg-line{font-size:.78rem;font-weight:700;margin-top:4px}
 .chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
 .chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
+.report-link{display:block;margin:14px auto 0;background:none;border:none;color:var(--text-secondary);font-size:.8rem;text-decoration:underline;cursor:pointer;font-family:inherit}
+.t-rep{background:none;border:none;color:var(--text-secondary);font-size:.85rem;cursor:pointer;padding:2px 6px;margin-left:2px}
 .deadline-banner{max-width:700px;margin:0 auto 12px;padding:10px 14px;border-radius:14px;background:rgba(227,192,119,.14);border:1px solid rgba(227,192,119,.4);color:var(--text-primary);font-size:.86rem;line-height:1.5}
 .scan-frame{position:absolute;inset:18%;border:3px solid var(--accent,#9FD8B3);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
 .widget{max-width:700px;margin:0 auto 12px;display:flex;gap:10px;flex-wrap:wrap}
@@ -326,6 +331,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     <button class="btn-outline btn-sm" id="gradesBtn" style="display:none">📊 Оценки</button>
     <button class="btn-outline btn-sm" id="scanBtn">📷 QR</button>
     <button class="btn-outline btn-sm" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
+    <button class="btn-outline btn-sm" id="settingsBtn" aria-label="Настройки">⚙️ Настройки</button>
   </div>
 </header>
 <div id="errBox"></div>
@@ -371,6 +377,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     <p id="waitText">Как только кто-то из одногруппников подтвердит тебя, откроются расписание и домашка.</p>
     <button class="btn-blue" id="waitRefresh">Проверить ещё раз</button>
     <button class="btn-outline btn-sm" id="waitLogout" style="margin-top:10px">Выйти</button>
+    <button class="btn-outline btn-sm" id="waitSettings" style="margin-top:10px">⚙️ Настройки</button>
   </div>
 </div>
 <!-- Login -->
@@ -437,6 +444,27 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   var SUPABASE_URL = "https://wsrrqwvemfliwzsqlkvg.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzcnJxd3ZlbWZsaXd6c3Fsa3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMDc1NDYsImV4cCI6MjEwNDc4MzU0Nn0.mcnzJ6Fh5eTCJSYXQ6rMkBHAbL5JPIC1UId1DlRfuDY";
   var sb = (typeof supabase !== "undefined") ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  // Настройки (аккаунт, оформление, документы, удаление аккаунта) — settings.js
+  var settingsParam=(function(){ var m=/[?&]settings=([a-z]+)/.exec(location.search); return m?m[1]:null; })();
+  if(window.DomashkaSettings) DomashkaSettings.init({
+    sb:sb, role:"student", loginUrl:"auth.html",
+    myId:function(){ return myUserId; },
+    isOwner:function(){ return myIsOwner; },
+    getInfo:function(){
+      var g=(myMembership&&myMembership.group_name)||data.group||"";
+      return { name:user.name||"", avatar:user.avatar||"", subtitle:g?("Студент · группа "+g):"Студент" };
+    },
+    onEditProfile:function(){ document.getElementById("editProfileBtn").click(); },
+    onRemindersChange:function(){ render(); },
+    onBlockChange:function(){ if(document.getElementById("ov1").classList.contains("open")){ try{ var sl=data.weeks[cur.w].days[cur.d].slots[cur.t]; drawTopics(sl.parts[activePart]||sl.parts[0]); }catch(e){} } }
+  });
+  function handleSettingsParam(){
+    if(!settingsParam || !window.DomashkaSettings) return;
+    var which=settingsParam; settingsParam=null;
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    DomashkaSettings.open();
+    if(which==="delete"){ var b=document.getElementById("dsDelete"); if(b) b.click(); }
+  }
   var myGroupId = null; // resolved from the logged-in profile once on load
   var myUserId = null; // the signed-in Supabase Auth user's id (for homework_done)
   var myIsOwner = false; // real Supabase profiles.is_owner (separate from the local password-based owner flag)
@@ -839,6 +867,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       var session=sess.data.session;
       if(!session){
         console.warn("[sync] no Supabase session - user is not logged in");
+        if(settingsParam){ window.location.href="auth.html?next="+encodeURIComponent("settings="+settingsParam); return; }
         if(showFeedback) toast("Сначала войди через страницу входа");
         return;
       }
@@ -866,6 +895,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
         var m0=(!mem.error && mem.data && mem.data[0]) || null;
         if(m0 && m0.status!=="approved"){
           showWaitScreen(m0);
+          handleSettingsParam();
           return;
         }
         document.getElementById("waitScreen").style.display="none";
@@ -902,6 +932,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       await loadExams();
       await handleCheckin();
       render();
+      handleSettingsParam();
       if(showFeedback) toast("Расписание обновлено");
     }catch(e){
       console.error("[sync] failed:", e);
@@ -1728,6 +1759,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
           h+='<input id="subComment" placeholder="Комментарий преподавателю (необязательно)" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font-size:.88rem;margin-bottom:8px">';
           h+='<button class="btn-blue btn-sm" id="subSend" style="width:100%">Отправить преподавателю</button></div>';
         }
+        if(part.hw||(part.files&&part.files.length)) h+='<button class="report-link" id="repHw">⚑ Пожаловаться на задание</button>';
       }
       // done button
       if(part.hw||(part.files&&part.files.length)||(part.topics&&part.topics.length)){
@@ -1738,6 +1770,11 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     document.getElementById("mBody").innerHTML=h;
     document.getElementById("ov1").classList.add("open");
     drawTopics(part);
+    var repHw=document.getElementById("repHw");
+    if(repHw) repHw.onclick=function(){
+      var hk=cur.w+":"+cur.d+":"+cur.t+":"+activePart;
+      DomashkaSettings.report({ kind:"homework", id:homeworkIdByKey[hk]||null, snapshot:(part.subject?part.subject+": ":"")+(part.hw||"(файлы)") });
+    };
     if(document.getElementById("subBox")) initSubmission();
     var claimOpen=document.getElementById("claimOpen");
     if(claimOpen){
@@ -1796,9 +1833,11 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     var h="";
     for(var i=0;i<part.topics.length;i++){
       var t=part.topics[i];
-      h+='<div class="topic'+(t.by?' ok':'')+'"><span class="tt">'+esc(t.title)+'</span>';
+      var hiddenUser=!myIsOwner && t._bookedBy && t._bookedBy!==myUserId && window.DomashkaSettings && DomashkaSettings.isBlocked(t._bookedBy);
+      h+='<div class="topic'+(t.by?' ok':'')+'"><span class="tt">'+(hiddenUser?'<i style="color:var(--text-secondary)">скрыто тобой</i>':esc(t.title))+'</span>';
       if(t.by){
-        h+='<span class="tw">✓ '+esc(t.by)+'</span>';
+        h+='<span class="tw">✓ '+(hiddenUser?'скрыто':esc(t.by))+'</span>';
+        if(!myIsOwner && t._bookedBy && t._bookedBy!==myUserId && !hiddenUser) h+='<button class="t-rep" title="Пожаловаться" aria-label="Пожаловаться" onclick="window._rep('+i+')">⚑</button>';
         if(myIsOwner) h+='<button class="btn-outline btn-sm" onclick="window._un('+i+')">Снять</button>';
         else if(myUserId && t._bookedBy===myUserId) h+='<button class="btn-outline btn-sm" onclick="window._drop('+i+')">Отказаться</button>';
       } else {
@@ -2023,6 +2062,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   // ---------- Deadline reminders on the day view ----------
   function deadlinesBanner(){
     if(myIsOwner) return "";
+    if(window.DomashkaSettings && !DomashkaSettings.remindersOn()) return "";
     var items=[];
     data.weeks.forEach(function(w){ w.days.forEach(function(d){ d.slots.forEach(function(sl){ sl.parts.forEach(function(p){
       if(!(p.hw||(p.files&&p.files.length)) || !p.due) return;
@@ -2191,6 +2231,11 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       render();
     } finally { btn.disabled=false; }
   }
+  window._rep=function(i){
+    var sl=data.weeks[cur.w].days[cur.d].slots[cur.t], pt=sl.parts[activePart]||sl.parts[0], t=pt.topics&&pt.topics[i];
+    if(!t || !window.DomashkaSettings) return;
+    DomashkaSettings.report({ kind:"topic", id:t._id||null, snapshot:t.title+" — "+(t.by||""), userId:t._bookedBy||null, userName:t.by||"" });
+  };
   window._drop=async function(i){
     var p=data.weeks[cur.w].days[cur.d].slots[cur.t].parts[activePart];
     var t=p.topics[i];
@@ -2479,6 +2524,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   document.getElementById("gradesBtn").onclick=openMyGrades;
   document.getElementById("cGroup").onclick=function(){ document.getElementById("ovGroup").classList.remove("open"); };
   document.getElementById("waitRefresh").onclick=function(){ myGroupId=null; syncFromSupabase(true); };
+  document.getElementById("waitSettings").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.open(); };
   document.getElementById("waitLogout").onclick=async function(){ if(sb) await sb.auth.signOut(); window.location.href="auth.html"; };
   document.getElementById("viewToggleBtn").onclick=function(){
     var goingToDay=(viewMode!=="day");
@@ -2496,6 +2542,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     if(showingLit) loadAndDrawLiterature();
   };
   document.getElementById("sessionsBtn").onclick=openSessions;
+  document.getElementById("settingsBtn").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.open(); else toast("Не загрузились настройки — обнови страницу"); };
   document.getElementById("scanBtn").onclick=openScanner;
   document.getElementById("cScan").onclick=closeScanner;
   document.getElementById("area").addEventListener("click",function(e){ if(e.target.closest && e.target.closest("#examWidget")) openSessions(); });

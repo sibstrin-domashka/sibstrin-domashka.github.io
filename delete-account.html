@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Удаление аккаунта — Домашка</title>
+<meta name="theme-color" content="#051F20">
+<link rel="icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&family=Golos+Text:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="legal.css">
+<script src="app-config.js"></script>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><a class="brand" href="index_3_updated.html">📚 Домашка</a>
+<nav class="nav"><a href="privacy.html">Конфиденциальность</a><a href="terms.html">Соглашение</a><a href="support.html">Поддержка</a><a href="delete-account.html">Удаление аккаунта</a></nav></div>
+<h1>Удаление аккаунта «Домашка»</h1>
+<div class="date">Как удалить аккаунт и какие данные при этом стираются</div>
+
+<h2>Способ 1 — в приложении (сразу)</h2>
+<ol>
+<li>Открой «Домашку» и войди в аккаунт.</li>
+<li>Нажми <b>⚙️ Настройки</b>.</li>
+<li>Внизу нажми <b>«Удалить аккаунт»</b>, введи пароль и слово УДАЛИТЬ.</li>
+</ol>
+<p>
+<a class="btn" href="index_3_updated.html?settings=delete">Я студент — войти и удалить</a>
+<a class="btn ghost" href="teacher-app.html?settings=delete">Я преподаватель</a>
+</p>
+
+<h2>Способ 2 — по запросу (если нет доступа к аккаунту)</h2>
+<div class="card">
+<label>ФИО</label><input id="dName" autocomplete="name">
+<label>Группа (или «преподаватель»)</label><input id="dGroup">
+<label>Комментарий (необязательно)</label><textarea id="dNote" rows="3"></textarea>
+<button class="btn" id="dSend" type="button">Отправить запрос на удаление</button>
+<p class="muted" style="margin-top:10px;font-size:.85rem">Откроется письмо на <a data-mail="Удаление аккаунта"></a>. Мы удалим аккаунт в течение 7 дней и ответим на письмо.</p>
+</div>
+
+<h2>Что удаляется</h2>
+<ul>
+<li>вход в приложение (логин и пароль), профиль, имя и фото;</li>
+<li>сданные работы и их файлы, отметки «выполнено», брони тем;</li>
+<li>если студент вступил в группу по заявке — его запись в группе с оценками и посещаемостью;</li>
+<li>у преподавателя — профиль, литература и план курса.</li>
+</ul>
+
+<h2>Что остаётся</h2>
+<ul>
+<li>если ФИО студента было в официальном списке группы, оно остаётся в журнале преподавателя (оценки и посещаемость) без связи с аккаунтом — как в бумажном журнале;</li>
+<li>задания, оценки и посещаемость, которые преподаватель выставил группам, остаются у студентов;</li>
+<li>жалобы остаются без указания автора.</li>
+</ul>
+<p>В резервных копиях сервера данные могут храниться до 30 дней, после чего удаляются окончательно.</p>
+<script>
+document.getElementById("dSend").onclick = function(){
+  var C = window.DOMASHKA_CONFIG || {};
+  var b = "Прошу удалить мой аккаунт «Домашка» и связанные данные.\n\nФИО: " + document.getElementById("dName").value +
+          "\nГруппа: " + document.getElementById("dGroup").value + "\n" + document.getElementById("dNote").value;
+  location.href = "mailto:" + (C.supportEmail || "") + "?subject=" + encodeURIComponent("Удаление аккаунта") + "&body=" + encodeURIComponent(b);
+};
+</script>
+<div class="foot">© <span id="year"></span> <span data-cfg="operatorName"></span> · «Домашка» — независимый студенческий проект, не официальный сервис НГАСУ (Сибстрин).</div>
+</div>
+<script src="legal.js"></script>
+</body>
+</html>

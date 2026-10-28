@@ -9,6 +9,9 @@
 <meta name="theme-color" content="#051F20">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="app-config.js"></script>
+<script src="themes.js"></script>
+<script src="settings.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -291,6 +294,7 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
     <div class="chip"><span class="dot"></span><span id="nameChip">—</span></div>
     <div style="display:flex;gap:12px;align-items:center">
       <button class="logout" id="sickBtn" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:7px 12px">🤒 Меня не будет</button>
+      <button class="logout" id="settingsBtn" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:7px 12px" aria-label="Настройки">⚙️</button>
       <button class="logout" id="logoutBtn">Выйти</button>
     </div>
   </header>
@@ -580,6 +584,22 @@ var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { storageKey: "domashka-teacher-auth", persistSession: true, autoRefreshToken: true }
 });
 
+var settingsParam = (function(){ var m = /[?&]settings=([a-z]+)/.exec(location.search); return m ? m[1] : null; })();
+if(window.DomashkaSettings) DomashkaSettings.init({
+  sb: sb, role: "teacher", loginUrl: "teacher.html",
+  canChangePassword: false,                      // вход по коду доступа
+  passwordLabel: "Код доступа",
+  passwordTransform: function(v){ return v.trim().toUpperCase(); },
+  myId: function(){ return teacherProfile && teacherProfile.id; },
+  getInfo: function(){ return { name: teacherProfile ? teacherProfile.full_name : "", subtitle: "Преподаватель" }; },
+  beforeDelete: async function(user){
+    // файлы литературы преподавателя
+    var r = await sb.from("teacher_literature").select("file").eq("teacher_id", user.id);
+    var paths = (r.data || []).map(function(x){ return x.file && x.file.path; }).filter(Boolean);
+    if(paths.length) await sb.storage.from(HW_BUCKET).remove(paths);
+  }
+});
+
 var DAY_NAMES = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
 var MONTH_NAMES = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 var DAY_SHORT = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
@@ -598,7 +618,7 @@ function showToast(text){
   setTimeout(function(){ t.classList.remove("show"); }, 2400);
 }
 function goToLogin(){
-  window.location.href = "teacher.html";
+  window.location.href = "teacher.html" + (settingsParam ? "?next=" + encodeURIComponent("settings=" + settingsParam) : "");
 }
 
 /* ---------------- Boot: this page REQUIRES a logged-in teacher ---------------- */
@@ -619,8 +639,15 @@ async function loadTeacherProfile(){
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
   try{ var sv = localStorage.getItem("domashka_teacher_view"); if(["weeks", "lit", "journal", "plan"].indexOf(sv) !== -1) currentView = sv; }catch(e){}
   setView(currentView);
+  if(settingsParam && window.DomashkaSettings){
+    var which = settingsParam; settingsParam = null;
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    DomashkaSettings.open();
+    if(which === "delete"){ var b = document.getElementById("dsDelete"); if(b) b.click(); }
+  }
 }
 
+document.getElementById("settingsBtn").onclick = function(){ if(window.DomashkaSettings) DomashkaSettings.open(); };
 document.getElementById("logoutBtn").onclick = async function(){
   await sb.auth.signOut();
   localStorage.removeItem("domashka_teacher_name");

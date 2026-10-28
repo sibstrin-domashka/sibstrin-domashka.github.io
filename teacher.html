@@ -8,6 +8,8 @@
 <link rel="manifest" href="manifest-teacher.json">
 <meta name="theme-color" content="#051F20">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="app-config.js"></script>
+<script src="themes.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -68,6 +70,8 @@ input:focus{outline:none;border-color:var(--accent)}
 .msg.err{background:rgba(232,96,92,.12);color:var(--danger);display:block}
 .msg.ok{background:rgba(79,209,165,.12);color:var(--success);display:block}
 .loading{color:var(--text-secondary);font-size:.9rem;text-align:center}
+.legal{margin-top:16px;text-align:center;font-size:.76rem;color:var(--text-secondary);line-height:1.6}
+.legal a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -86,6 +90,7 @@ input:focus{outline:none;border-color:var(--accent)}
 
   <button class="btn" id="authBtn">Войти</button>
   <div class="msg" id="authMsg"></div>
+  <div class="legal">Входя, вы принимаете <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a> и <a href="privacy.html" target="_blank" rel="noopener">Политику конфиденциальности</a>.<br><a href="support.html" target="_blank" rel="noopener">Поддержка</a> · Независимый проект, не официальный сервис НГАСУ</div>
 </div>
 
 <script>
@@ -131,7 +136,8 @@ function clearAuthMsg(){
   m.className = "msg"; m.textContent = "";
 }
 function goToApp(){
-  window.location.href = "teacher-app.html";
+  var nx = (new URLSearchParams(window.location.search).get("next") || "").replace(/[^a-z=]/g, "");
+  window.location.href = "teacher-app.html" + (/^settings=[a-z]+$/.test(nx) ? "?" + nx : "");
 }
 
 /* ---------------- Auth ---------------- */
@@ -194,6 +200,7 @@ document.getElementById("authBtn").onclick = async function(){
     // Ignore - just fall through to showing the login form.
   }
   showBoot(false);
+  if(/[?&]deleted=1/.test(location.search)) showAuthMsg("Аккаунт и данные удалены.", true);
 })();
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>

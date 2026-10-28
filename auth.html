@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Домашка — вход</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3B82C4">
+<meta name="theme-color" content="#051F20">
 <link rel="icon" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Домашка">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
+<script src="themes.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --blue:#3B82C4; --blue-dark:#1E5A9A; --blue-light:#E8F3FC;
@@ -56,6 +60,25 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
 .whoami{font-size:.88rem;color:var(--black);background:var(--blue-light);padding:8px 12px;border-radius:8px;margin-bottom:4px}
 .invite-note{background:rgba(79,209,165,.12);color:var(--success,#4FD1A5);border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:6px;line-height:1.4}
 .pending-note{background:rgba(224,177,60,.12);color:#E0B13C;border-radius:10px;padding:10px 12px;font-size:.84rem;margin:8px 0 4px;line-height:1.4}
+/* Тёмное оформление в стиле приложения */
+:root{--blue:#8EB69B;--blue-dark:#DAF1DE;--blue-light:rgba(142,182,155,.14);--black:#DAF1DE;--gray:#8EB69B;--danger:#E8605C;--success:#9FD8B3}
+body{background:#051F20;color:#DAF1DE;font-family:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.card{background:rgba(11,43,38,.92);border:1px solid rgba(142,182,155,.22);box-shadow:0 18px 40px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
+.logo{font-family:"Unbounded",system-ui,sans-serif;font-weight:600;color:#DAF1DE}
+input,select{background:rgba(255,255,255,.04);border-color:rgba(142,182,155,.3);color:#DAF1DE}
+select option{background:#0B2B26;color:#DAF1DE}
+input::placeholder{color:rgba(218,241,222,.4)}
+.btn{background:#8EB69B;color:#051F20}
+.btn:active{background:#79A88A}
+.msg.err{background:rgba(232,96,92,.12)}
+.msg.ok{background:rgba(159,216,179,.12)}
+.ref-link{background:rgba(255,255,255,.05)}
+.copy-btn{background:transparent;color:#DAF1DE;border-color:rgba(142,182,155,.4)}
+.consent{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:.84rem;line-height:1.45;color:#C9E5D2;cursor:pointer}
+.consent input{width:18px;height:18px;flex-shrink:0;margin-top:1px;accent-color:#8EB69B}
+.consent a,.legal a{color:#9FE3BE}
+.legal{margin-top:18px;text-align:center;font-size:.76rem;color:#8EB69B;line-height:1.6}
+.notice{background:rgba(159,216,179,.12);color:#9FD8B3;border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:12px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -63,6 +86,7 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
 <div class="card">
   <div class="logo">📚 Домашка</div>
   <div class="sub">Расписание и домашка твоей группы</div>
+  <div class="notice" id="deletedNote" style="display:none">Аккаунт и данные удалены. Если захочешь вернуться — просто зарегистрируйся снова.</div>
 
   <div id="joinScreen" class="screen active">
     <div class="invite-note" id="inviteNote" style="display:none"></div>
@@ -84,6 +108,7 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
       <label>Повтори пароль</label>
       <input type="password" id="pass2" placeholder="Ещё раз" autocomplete="new-password">
       <div class="hint">Этот пароль понадобится, чтобы зайти с другого устройства — не забудь его.</div>
+      <label class="consent"><input type="checkbox" id="consent"><span>Я принимаю <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a> и даю согласие на обработку персональных данных по <a href="privacy.html" target="_blank" rel="noopener">Политике конфиденциальности</a></span></label>
     </div>
     <div id="loginFields" style="display:none">
       <label>Пароль</label>
@@ -97,15 +122,16 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
   <div id="doneScreen" class="screen">
     <p style="line-height:1.5">Готово! Ты в группе <b id="doneGroup"></b>.</p>
 
-    <div class="ref-box">
+    <div class="ref-box" style="display:none">
       <div style="font-size:.85rem;font-weight:600;color:var(--blue-dark)">Приглашай одногруппников — за каждого начисляются очки</div>
       <img id="refQr" alt="QR-код твоей ссылки">
       <div class="ref-link" id="refLink"></div>
       <button class="copy-btn" id="copyBtn">Скопировать ссылку</button>
     </div>
 
-    <p class="hint" style="margin-top:14px">Дальше сюда подключится само расписание — эта часть ещё в разработке.</p>
+    <p class="hint" style="margin-top:14px">Открываю расписание...</p>
   </div>
+  <div class="legal"><a href="privacy.html" target="_blank" rel="noopener">Конфиденциальность</a> · <a href="terms.html" target="_blank" rel="noopener">Соглашение</a> · <a href="support.html" target="_blank" rel="noopener">Поддержка</a><br>Независимый студенческий проект, не официальный сервис НГАСУ</div>
 </div>
 
 <script>
@@ -249,6 +275,7 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
     var p2 = document.getElementById("pass2").value;
     if(p1.length < 6){ showPassMsg("Пароль — минимум 6 символов"); return; }
     if(p1 !== p2){ showPassMsg("Пароли не совпадают"); return; }
+    if(!document.getElementById("consent").checked){ showPassMsg("Чтобы зарегистрироваться, отметь согласие с соглашением и политикой"); return; }
 
     btn.disabled = true; btn.textContent = "Регистрируем...";
     try{
@@ -276,7 +303,6 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
 
       var link = window.location.origin + window.location.pathname + "?ref=" + session.user.id;
       document.getElementById("refLink").textContent = link;
-      document.getElementById("refQr").src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(link);
 
       showScreen("doneScreen");
       setTimeout(goToApp, 1800);
@@ -297,9 +323,11 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
   };
 
   function goToApp(){
-    window.location.href = "index_3_updated.html";
+    var nx = (new URLSearchParams(window.location.search).get("next") || "").replace(/[^a-z=]/g, "");
+    window.location.href = "index_3_updated.html" + (/^settings=[a-z]+$/.test(nx) ? "?" + nx : "");
   }
 
+  if(/[?&]deleted=1/.test(location.search)) document.getElementById("deletedNote").style.display = "block";
   // If this device already has a session and a profile, skip straight to the app.
   (async function(){
     await loadGroups();
