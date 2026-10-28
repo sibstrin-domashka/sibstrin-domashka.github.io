@@ -166,9 +166,17 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   <div class="section-title">👨‍🏫 Заявки преподавателей</div>
   <div id="treqList"><div class="loading">Загрузка...</div></div>
 
+  <div class="section-title">🎁 Приглашения в «Домашку»</div>
+  <div id="refList"><div class="loading">Загрузка...</div></div>
+
   <div class="section-title">✉️ Рассылка преподавателям</div>
-  <p class="hint-owner">Таблица ФИО + код входа для всех преподавателей. Скачай её, добавь колонку с почтой и запусти рассылку (инструкция — в файле рассылки).</p>
-  <button class="btn-add" id="codesBtn">Скачать коды преподавателей (CSV)</button>
+  <p class="hint-owner"><b>Шаг 1.</b> Вставь список: в каждой строке ФИО и почта (можно прямо скопировать два столбца из Excel или Google Таблицы). Коды для новых преподавателей создадутся сами.</p>
+  <textarea id="mailList" rows="6" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;font-size:.9rem;background:var(--bg-elevated);color:var(--text-primary)" placeholder="Валиева Елена Николаевна	valieva@sibstrin.ru
+Иванов Иван Иванович; ivanov@sibstrin.ru"></textarea>
+  <button class="btn-add" id="mailPrepBtn" style="margin-top:8px">Подготовить таблицу для рассылки</button>
+  <div id="mailPrepMsg" class="hint-owner" style="margin-top:8px"></div>
+  <p class="hint-owner" style="margin-top:12px"><b>Шаг 2.</b> Скачай готовую таблицу (ФИО, код, почта) и открой её в Google Таблицах — дальше меню «Домашка → Отправить приглашения».</p>
+  <button class="btn-add" id="codesBtn">Скачать таблицу для рассылки (CSV)</button>
 </div>
 
 <script>
@@ -317,6 +325,27 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       });
     }
     await loadTeacherRequests();
+    await loadReferrals();
+  }
+  async function loadReferrals(){
+    var el=document.getElementById("refList");
+    var r=await sb.rpc("owner_referrals");
+    if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 22_referrals_and_mailing.sql ('+esc(r.error.message)+')</div>'; return; }
+    var rows=r.data||[];
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Пока никто никого не пригласил. Карточка «Пригласи в Домашку» есть у студентов на главном экране.</p>'; return; }
+    el.innerHTML=rows.map(function(x){
+      var free=x.free_until && new Date(x.free_until)>new Date();
+      return '<div class="lit-row"><div><div class="lname">Группа '+esc(x.group_name)+(free?' · 🎉 бесплатно до '+fmtDate(x.free_until):'')+'</div>'+
+        '<div class="lsub">групп: '+x.groups_active+'/9'+(x.groups_waiting?' (+'+x.groups_waiting+' ждут 3 студентов)':'')+' · преподавателей: '+x.teachers+'/7</div></div></div>';
+    }).join("");
+  }
+  function parseMailList(text){
+    return text.split(/\r?\n/).map(function(line){
+      var m=line.match(/([^\s;,\t<>]+@[^\s;,\t<>]+\.[^\s;,\t<>]+)/);
+      var email=m?m[1]:"";
+      var name=line.replace(email,"").replace(/[;,\t<>]+/g," ").replace(/\s+/g," ").trim();
+      return { full_name:name, email:email };
+    }).filter(function(x){ return x.full_name.split(" ").length>=2; });
   }
   async function loadTeacherRequests(){
     var el=document.getElementById("treqList");
@@ -343,11 +372,23 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   document.getElementById("ibIdea").onclick=function(){ DomashkaSettings.inbox("idea"); };
   document.getElementById("ibApp").onclick=function(){ DomashkaSettings.inbox("app"); };
   document.getElementById("ibRep").onclick=function(){ DomashkaSettings.inbox("report"); };
+  document.getElementById("mailPrepBtn").onclick=async function(){
+    var rows=parseMailList(document.getElementById("mailList").value), msg=document.getElementById("mailPrepMsg");
+    if(!rows.length){ msg.textContent="Не нашла ни одной строки «ФИО + почта»."; return; }
+    var noMail=rows.filter(function(x){ return !x.email; }).length;
+    this.disabled=true;
+    var r=await sb.rpc("owner_prepare_teachers",{ p_rows: rows });
+    this.disabled=false;
+    if(r.error){ msg.textContent="Ошибка: "+r.error.message+" (нужно запустить 22_referrals_and_mailing.sql)"; return; }
+    var created=(r.data||[]).filter(function(x){ return x.is_new; }).length;
+    msg.textContent="Готово: "+(r.data||[]).length+" преподавателей, из них новых (создан код): "+created+(noMail?". Без почты: "+noMail:"")+". Теперь нажми «Скачать таблицу для рассылки».";
+  };
   document.getElementById("codesBtn").onclick=async function(){
     var r=await sb.rpc("owner_teacher_codes");
     if(r.error){ alertBox("Нужно запустить 20_scrape_queue_and_teacher_requests.sql ("+r.error.message+")"); return; }
-    var rows=[["ФИО","Код","Уже вошёл","Почта"]].concat((r.data||[]).map(function(x){ return [x.full_name,x.code,x.registered?"да":"нет",""]; }));
-    var csv="﻿"+rows.map(function(row){ return row.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
+    var rows=[["ФИО","Код","Уже вошёл","Почта","Статус"]].concat((r.data||[]).filter(function(x){ return x.email; }).map(function(x){ return [x.full_name,x.code,x.registered?"да":"нет",x.email||"",""]; }));
+    if(rows.length===1){ alertBox("Пока ни у кого нет почты — сначала шаг 1."); return; }
+    var csv="﻿"+rows.map(function(row){ return row.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(","); }).join("\r\n");
     var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="domashka-teacher-codes.csv"; a.click();
   };
 

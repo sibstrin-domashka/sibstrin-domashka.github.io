@@ -254,6 +254,24 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
 .chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
 .share-row{display:flex;gap:6px;flex-wrap:wrap}
+.ref-card{max-width:760px;margin:0 auto 12px;display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:14px;cursor:pointer;
+  background:linear-gradient(135deg,rgba(91,208,168,.16),rgba(91,208,168,.04)),var(--surface);border:1px solid rgba(91,208,168,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.ref-card .rc-main{flex:1;min-width:0}
+.ref-card .rc-l{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);font-weight:700}
+.ref-card .rc-t{font-weight:700;font-size:1.02rem;margin-top:3px;line-height:1.3}
+.ref-card .rc-s{font-size:.82rem;color:var(--text-secondary);margin-top:2px}
+.rc-bars{display:flex;gap:12px;margin-top:10px}
+.rc-bars>div{flex:1;min-width:0}
+.rc-bars span{font-size:.75rem;color:var(--text-secondary);display:block;white-space:nowrap}
+.rc-bars b{color:var(--text-primary)}
+.rc-bars i{display:block;height:6px;border-radius:6px;background:rgba(255,255,255,.1);margin-top:4px;overflow:hidden}
+.rc-bars em{display:block;height:100%;background:var(--accent);border-radius:6px}
+.rc-qr{flex-shrink:0;width:76px;height:76px;background:#fff;border-radius:10px;padding:5px}
+.rc-qr svg{display:block;width:100%;height:100%}
+.ref-stats{display:flex;gap:10px;margin-top:14px}
+.ref-stats>div{flex:1;text-align:center;padding:10px;border:1px solid var(--border);border-radius:12px;font-size:1.05rem}
+.ref-stats b{font-size:1.4rem}
+.ref-stats small{display:block;font-size:.75rem;color:var(--text-secondary)}
 .grp-qr{background:#fff;border-radius:12px;padding:8px;width:170px;margin:10px auto}
 .grp-qr:empty{display:none}
 .grp-qr svg{display:block;width:100%;height:auto}
@@ -997,6 +1015,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       render();
       handleSettingsParam();
       refreshMoreBadge();
+      loadReferral();
       if(!window.__repliesChecked && window.DomashkaSettings){ window.__repliesChecked=true; setTimeout(function(){ DomashkaSettings.checkReplies(); }, 2500); }
       if(showFeedback) toast("Расписание обновлено");
     }catch(e){
@@ -1168,11 +1187,13 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       html+='<div class="day-view-header"><div class="dv-day">Расписание пока пустое</div>'+
             '<div class="dv-date">Загляни на «2 недели», как только появятся данные</div></div>';
       document.getElementById("area").innerHTML=html;
+      afterReferralCard();
       return;
     }
 
     var day=data.weeks[activeWeek].days[showDay];
     html+=widgetHtml();
+    html+=referralCardHtml();
     html+=deadlinesBanner();
     html+='<div class="dv-nav">';
     html+='<button id="dvPrev" class="dv-nav-btn"'+(dayViewAbsIndex<=0?' disabled':'')+'>‹</button>';
@@ -1220,6 +1241,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     html+='<div class="dv-more"><button class="btn-outline" id="dvMoreBtn">Показать на 2 недели</button></div>';
 
     document.getElementById("area").innerHTML=html;
+    afterReferralCard();
     if(isLiveToday) renderCurrentStatus(info,activeWeek);
 
     var dvMore=document.getElementById("dvMoreBtn");
@@ -2054,6 +2076,55 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       });
     }); });
     return best;
+  }
+  // ---------- «Пригласи в Домашку»: другие группы и преподаватели ----------
+  var refStatus=null;
+  async function loadReferral(){
+    if(!sb || !myGroupId) return;
+    var r=await sb.rpc("my_referral_status");
+    if(r.error || !r.data || !r.data[0]) return;
+    var first=!refStatus; refStatus=r.data[0];
+    if(first) render();
+  }
+  function appInviteLink(){
+    var base=window.location.href.replace(/[^\/]*([?#].*)?$/,"");
+    return base+"auth.html?r="+encodeURIComponent(refStatus.ref_code);
+  }
+  function fmtShortDate(iso){ var d=new Date(iso); return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear(); }
+  function referralCardHtml(){
+    if(!refStatus || myIsOwner) return "";
+    var g=Math.min(refStatus.groups_active||0,9), t=Math.min(refStatus.teachers||0,7);
+    var free=refStatus.free_until && new Date(refStatus.free_until)>new Date();
+    return '<div class="ref-card" id="refCard" role="button" tabindex="0">'+
+      '<div class="rc-main"><div class="rc-l">Пригласи в «Домашку»</div>'+
+      '<div class="rc-t">'+(free?'🎉 Семестр бесплатный до '+fmtShortDate(refStatus.free_until):'Семестр бесплатно для всей группы')+'</div>'+
+      '<div class="rc-s">'+(free?'Спасибо, что зовёте других!':'Позовите 9 других групп или 7 преподавателей')+'</div>'+
+      '<div class="rc-bars"><div><span>Группы <b>'+g+'/9</b></span><i><em style="width:'+(g/9*100)+'%"></em></i></div>'+
+      '<div><span>Преподаватели <b>'+t+'/7</b></span><i><em style="width:'+(t/7*100)+'%"></em></i></div></div></div>'+
+      '<div class="rc-qr" id="refQrSmall"></div></div>';
+  }
+  function afterReferralCard(){
+    var card=document.getElementById("refCard"); if(!card || !refStatus) return;
+    drawQrInto("refQrSmall", appInviteLink());
+    card.onclick=openAppInvite;
+    card.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openAppInvite(); } };
+  }
+  function openAppInvite(){
+    if(!refStatus) return;
+    var link=appInviteLink();
+    var g=refStatus.groups_active||0, w=refStatus.groups_waiting||0, t=refStatus.teachers||0;
+    document.getElementById("grpTitle").textContent="Пригласи в «Домашку»";
+    document.getElementById("grpBody").innerHTML=
+      '<p style="color:var(--text-secondary);font-size:.88rem;line-height:1.5">Отправь ссылку или покажи QR-код студентам <b>других групп</b> и преподавателям. '+
+      'Когда <b>9 новых групп</b> начнут пользоваться «Домашкой» или войдут <b>7 преподавателей</b> — у вашей группы весь семестр бесплатно.</p>'+
+      '<div class="grp-qr" id="refQrBig" style="width:210px"></div>'+
+      '<div class="grp-link">'+esc(link)+'</div>'+shareButtons("ap")+
+      '<div class="ref-stats"><div><b>'+g+'</b> / 9<small>групп засчитано</small></div><div><b>'+t+'</b> / 7<small>преподавателей</small></div></div>'+
+      (w?'<p style="color:var(--text-secondary);font-size:.8rem;line-height:1.45;margin-top:8px">Ещё '+w+' '+(w===1?'группа ждёт':'групп ждут')+': группа засчитывается, когда в ней наберётся 3 студента.</p>':'')+
+      '<p style="color:var(--text-secondary);font-size:.8rem;line-height:1.45;margin-top:8px">Засчитывается, если по твоей ссылке человек стал <b>первым</b> из своей группы. Пригласить одногруппников — в «Ещё → Пригласить в группу».</p>';
+    document.getElementById("ovGroup").classList.add("open");
+    drawQrInto("refQrBig", link);
+    bindShare("ap", link, "Пользуюсь «Домашкой» — расписание, домашка и темы докладов в одном приложении. Заходи со своей группой:");
   }
   function widgetHtml(){
     if(myIsOwner) return "";

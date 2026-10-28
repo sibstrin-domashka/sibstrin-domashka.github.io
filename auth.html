@@ -210,6 +210,13 @@ input::placeholder{color:rgba(218,241,222,.4)}
   var refFromLink = getRefFromUrl();
   // ?g=CODE - invitation link to one group (works for any group, listed or not)
   var inviteCode = (new URLSearchParams(window.location.search).get("g") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  // ?r=КОД — приглашение в приложение от другой группы (бонус пригласившим).
+  var appRef = (new URLSearchParams(window.location.search).get("r") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  try{ if(appRef) localStorage.setItem("domashka_ref", appRef); else appRef = localStorage.getItem("domashka_ref") || ""; }catch(e){}
+  async function claimRef(client){
+    if(!appRef) return;
+    try{ var r = await client.rpc("claim_referral", { p_ref: appRef }); if(!r.error) localStorage.removeItem("domashka_ref"); }catch(e){}
+  }
   var pendingStatus = "approved";
   var pendingGroupId = null, pendingName = null, pendingEmail = null, pendingIsClaimed = null;
 
@@ -356,6 +363,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
 
       showScreen("doneScreen");
       document.getElementById("roleTabs").style.display = "none";
+      await claimRef(sb);
       var mem = await sb.rpc("my_membership");
       var m0 = (!mem.error && mem.data && mem.data[0]) || null;
       if(m0 && m0.is_starosta && m0.join_code){
@@ -436,6 +444,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       var j = await tsb.rpc("join_teacher_by_roster", { p_full_name: name, p_code: code });
       if(j.error){ tMsg("tMsg", "Не нашли такое ФИО с этим кодом. Проверьте данные из письма."); return; }
       try{ localStorage.setItem("domashka_teacher_name", name); }catch(e){}
+      await claimRef(tsb);
       goTeacherApp();
     }catch(e){ tMsg("tMsg", "Что-то пошло не так: " + e.message); }
     finally{ btn.disabled = false; btn.textContent = "Войти"; }
@@ -461,6 +470,11 @@ input::placeholder{color:rgba(218,241,222,.4)}
   }
 
   if(/[?&]deleted=1/.test(location.search)) document.getElementById("deletedNote").style.display = "block";
+  if(appRef && !inviteCode && new URLSearchParams(location.search).get("r")){
+    var an = document.getElementById("inviteNote");
+    an.textContent = "Тебя пригласили в «Домашку». Выбери свою группу — если ты первый из неё, пригласи одногруппников после регистрации.";
+    an.style.display = "block";
+  }
   // If this device already has a session and a profile, skip straight to the app.
   (async function(){
     await loadGroups();
