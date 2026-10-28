@@ -52,7 +52,7 @@
       ".ds-row{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;background:none;border:none;border-top:1px solid " + bd + ";color:" + txt + ";font:inherit;font-size:.94rem;text-align:left;cursor:pointer;text-decoration:none}" +
       ".ds-row:first-child{border-top:none}" +
       ".ds-row:active{background:rgba(255,255,255,.05)}" +
-      ".ds-row .ds-ic{width:22px;text-align:center;flex-shrink:0}" +
+      ".ds-row .ds-ic{width:22px;text-align:center;flex-shrink:0;display:flex;align-items:center;justify-content:center}.ds-ic svg{color:" + acc + "}.ds-row.danger .ds-ic svg{color:" + dng + "}" +
       ".ds-row .ds-t{flex:1;min-width:0}.ds-row .ds-t small{display:block;color:" + sub + ";font-size:.78rem;margin-top:2px}" +
       ".ds-row .ds-v{color:" + sub + ";font-size:.84rem}" +
       ".ds-row .ds-chev{color:" + sub + "}" +
@@ -112,11 +112,40 @@
   }
   function close(id){ var ov = $(id); if(ov) ov.classList.remove("on"); }
 
+  var ICON_SVG = {
+    "👤":'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    "🔑":'<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2M17 6l3 3M15 8l2 2"/>',
+    "🚪":'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+    "🖼️":'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+    "✨":'<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    "🔠":'<path d="M4 7V5h16v2M9 19h6M12 5v14"/>',
+    "⏰":'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/>',
+    "⬇️":'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+    "🙈":'<path d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-10-8-10-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 10 8 10 8a18 18 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M2 2l20 20"/>',
+    "🧹":'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
+    "💬":'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l2-5.1A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/>',
+    "🐞":'<rect x="8" y="6" width="8" height="14" rx="4"/><path d="M12 20v-9M8 13H4M20 13h-4M6 7l2 2M18 7l-2 2M6 19l2-2M18 19l-2-2M10 4l1 2M14 4l-1 2"/>',
+    "💡":'<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/>',
+    "📨":'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+    "📬":'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+    "🔒":'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    "📄":'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+    "🗑️":'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    "📚":'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+    "🗓️":'<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M8 14h2M14 14h2M8 17.5h2"/>',
+    "👨‍🏫":'<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/>',
+    "👥":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+    "⚙️":'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+    "📋":'<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h6M9 19h3"/>',
+    "🤒":'<path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/>',
+    "🚩":'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>'
+  };
+  function ic(e){ var p = ICON_SVG[e]; return p ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>' : (e || ""); }
   function row(o){
     var tag = o.href ? "a" : "button";
     return "<" + tag + ' class="ds-row' + (o.danger ? " danger" : "") + '"' + (o.id ? ' id="' + o.id + '"' : "") +
       (o.href ? ' href="' + esc(o.href) + '"' + (o.blank ? ' target="_blank" rel="noopener"' : "") : ' type="button"') + ">" +
-      '<span class="ds-ic">' + (o.icon || "") + '</span><span class="ds-t">' + esc(o.title) + (o.sub ? "<small>" + esc(o.sub) + "</small>" : "") + "</span>" +
+      '<span class="ds-ic">' + ic(o.icon) + '</span><span class="ds-t">' + esc(o.title) + (o.sub ? "<small>" + esc(o.sub) + "</small>" : "") + "</span>" +
       (o.right || '<span class="ds-chev">›</span>') + "</" + tag + ">";
   }
   function sw(id, on){ return '<label class="ds-sw"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + "><i></i></label>"; }

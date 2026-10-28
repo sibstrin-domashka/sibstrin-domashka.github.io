@@ -1,0 +1,284 @@
+/* =====================================================================
+   Домашка — единая дизайн-система (студенты и преподаватели).
+   Подключается ПОСЛЕДНИМ в <head>, поэтому аккуратно переопределяет
+   старые стили страниц, ничего не меняя в логике и разметке.
+   Страница помечается <html data-ui="student"> или <html data-ui="teacher">.
+   ===================================================================== */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root{
+  /* ---- Цвета ---- */
+  --c-bg:#061A19;
+  --c-surface:rgba(8,32,30,.80);        /* полупрозрачные карточки поверх фото */
+  --c-surface-solid:#0B2724;            /* модальные окна, шапки таблиц */
+  --c-surface-2:#10332F;                /* вторичный слой (ячейки, строки) */
+  --c-border:rgba(170,225,205,.14);
+  --c-border-strong:rgba(170,225,205,.26);
+  --c-text:#EEF7F3;
+  --c-text-2:#A8C7BC;
+  --c-text-3:#7FA397;
+  --c-accent:#5BD0A8;                   /* бирюзово-зелёный */
+  --c-accent-hover:#47B892;
+  --c-accent-soft:rgba(91,208,168,.14);
+  --c-on-accent:#04211C;
+  --c-success:#6FD3A0;
+  --c-warn:#E8B85A;
+  --c-danger:#EC7A74;
+  --c-today:#E9A54A;
+
+  /* ---- Шрифт и размеры ---- */
+  --font:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-xs:.75rem;     /* 12 */
+  --fs-sm:.8125rem;   /* 13 */
+  --fs-md:.875rem;    /* 14 */
+  --fs-base:.9375rem; /* 15 */
+  --fs-lg:1.0625rem;  /* 17 */
+  --fs-xl:1.375rem;   /* 22 */
+  --fs-2xl:1.625rem;  /* 26 */
+  --lh:1.5;
+
+  /* ---- Отступы (шаг 4/8) ---- */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+
+  /* ---- Скругления, тени, размеры ---- */
+  --r-sm:8px; --r-md:10px; --r-card:14px; --r-modal:20px; --r-pill:999px;
+  --shadow-soft:0 4px 16px rgba(0,0,0,.22);
+  --blur:blur(14px);
+  --h-control:44px;
+  --w-page:1160px;
+
+  /* ---- Совместимость со старыми именами переменных обеих страниц ---- */
+  --bg:var(--c-bg);
+  --bg-elevated:var(--c-surface-2);
+  --surface:var(--c-surface);
+  --surface-solid:var(--c-surface-solid);
+  --bg-card:var(--c-surface-solid);
+  --bg-card-2:var(--c-surface-2);
+  --border:var(--c-border);
+  --text-primary:var(--c-text);
+  --text-secondary:var(--c-text-2);
+  --accent:var(--c-accent);
+  --accent-hover:var(--c-accent-hover);
+  --accent-dark:var(--c-accent-hover);
+  --accent-contrast:var(--c-on-accent);
+  --accent-soft:var(--c-accent-soft);
+  --success:var(--c-success);
+  --warn:var(--c-warn);
+  --danger:var(--c-danger);
+  --today:var(--c-today);
+  --today-dark:#F0B866;
+  --radius-sm:var(--r-sm);
+  --radius-md:var(--r-card);
+  --radius-lg:var(--r-modal);
+  --radius:var(--r-card);
+  --shadow:var(--shadow-soft);
+  --font-body:var(--font);
+  --font-display:var(--font);
+}
+
+/* ================= База ================= */
+html[data-ui] body{
+  font-family:var(--font);
+  font-size:var(--fs-base);
+  line-height:var(--lh);
+  color:var(--c-text);
+  background-color:var(--c-bg);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+html[data-ui] h1,html[data-ui] h2,html[data-ui] h3,html[data-ui] h4,
+html[data-ui] .brand,html[data-ui] .logo{font-family:var(--font);letter-spacing:-.01em}
+html[data-ui] button,html[data-ui] input,html[data-ui] select,html[data-ui] textarea{font-family:var(--font)}
+html[data-ui] :focus-visible{outline:2px solid var(--c-accent);outline-offset:2px}
+@media (max-width:760px){ html[data-ui] body{background-attachment:scroll !important} }
+
+/* ================= Шапка ================= */
+html[data-ui] header{
+  position:sticky;top:0;z-index:30;
+  max-width:none;margin:0;
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(16px, calc((100vw - var(--w-page)) / 2)) 10px !important;
+  background:rgba(6,26,25,.72);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--c-border);
+  box-shadow:none;
+}
+html[data-ui="student"] .logo{font-size:var(--fs-lg);font-weight:700;gap:var(--sp-2)}
+html[data-ui="student"] .logo span{font-size:var(--fs-xs);font-weight:600;padding:2px 10px;background:var(--c-accent-soft);color:var(--c-accent);border:1px solid rgba(91,208,168,.3)}
+html[data-ui="student"] .user-chip{background:rgba(255,255,255,.05);border:1px solid var(--c-border);font-size:var(--fs-md);padding:4px 12px 4px 4px;min-height:36px}
+html[data-ui="student"] .edit-btn{color:var(--c-accent);font-size:var(--fs-xs);padding:4px 2px}
+html[data-ui] .hdr-gear{width:40px;height:40px;border:1px solid var(--c-border);background:rgba(255,255,255,.05);color:var(--c-text);border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;padding:0}
+html[data-ui] .hdr-gear svg{width:20px;height:20px}
+html[data-ui="teacher"] .chip{background:rgba(255,255,255,.05);border:1px solid var(--c-border);font-size:var(--fs-md);font-weight:600;padding:8px 14px;max-width:72vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-ui="teacher"] #settingsBtn{width:40px;height:40px;padding:0 !important;display:inline-flex;align-items:center;justify-content:center;color:var(--c-text);background:rgba(255,255,255,.05) !important;border:1px solid var(--c-border) !important;text-decoration:none}
+html[data-ui="student"] .owner-bar{font-size:var(--fs-sm)}
+
+/* ================= Кнопки ================= */
+html[data-ui] button{font-size:var(--fs-md);font-weight:600;border-radius:var(--r-md)}
+html[data-ui="student"] .btn-blue,html[data-ui="student"] .btn-outline,html[data-ui="student"] .btn-danger{min-height:40px;padding:8px 16px;font-size:var(--fs-md);border-radius:var(--r-md)}
+html[data-ui="student"] .btn-sm{min-height:36px;padding:6px 12px;font-size:var(--fs-sm)}
+html[data-ui="student"] .btn-outline{border:1px solid var(--c-border-strong);color:var(--c-text);background:rgba(255,255,255,.03)}
+html[data-ui="student"] .btn-outline:hover{border-color:var(--c-accent);color:var(--c-accent)}
+html[data-ui="student"] .btn-blue:hover{background:var(--c-accent-hover)}
+html[data-ui="teacher"] .btn{font-family:var(--font);font-size:var(--fs-base);font-weight:600;border-radius:var(--r-md);min-height:var(--h-control);padding:11px 16px}
+html[data-ui="teacher"] .btn-outline{border:1px solid var(--c-border-strong);background:rgba(255,255,255,.03)}
+html[data-ui="teacher"] .hw-btn{font-family:var(--font);font-size:var(--fs-md);font-weight:600;border-radius:var(--r-md);min-height:var(--h-control);padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);border-width:1px}
+html[data-ui="teacher"] .hw-btn.att-btn{background:rgba(255,255,255,.03)}
+html[data-ui="teacher"] .hw-btn.qr-btn{background:var(--c-accent);border-color:var(--c-accent);color:var(--c-on-accent)}
+html[data-ui="teacher"] .hw-btn svg{width:18px;height:18px;flex-shrink:0}
+html[data-ui] button:disabled{opacity:.55;cursor:default}
+
+/* ================= Поля ввода ================= */
+html[data-ui] input:not([type=checkbox]):not([type=radio]):not([type=file]),
+html[data-ui] select,html[data-ui] textarea{
+  font-size:var(--fs-base);
+  border:1px solid var(--c-border-strong) !important;
+  border-radius:var(--r-md);
+  background:rgba(255,255,255,.04);
+  color:var(--c-text);
+}
+html[data-ui] input:not([type=checkbox]):not([type=radio]):not([type=file]),html[data-ui] select{min-height:var(--h-control)}
+html[data-ui] input:focus,html[data-ui] select:focus,html[data-ui] textarea:focus{border-color:var(--c-accent) !important;outline:none;box-shadow:0 0 0 3px rgba(91,208,168,.18)}
+html[data-ui] input::placeholder,html[data-ui] textarea::placeholder{color:var(--c-text-3)}
+html[data-ui] select option{background:var(--c-surface-solid);color:var(--c-text)}
+html[data-ui="student"] .fg label{font-size:var(--fs-xs);letter-spacing:.04em;color:var(--c-text-2);margin-bottom:6px}
+html[data-ui="teacher"] label{font-size:var(--fs-sm);color:var(--c-text-2)}
+
+/* ================= Карточки ================= */
+html[data-ui="student"] .dv-card,html[data-ui="student"] .widget .w-card,html[data-ui="student"] .panel,
+html[data-ui="student"] .lit-subject,html[data-ui="student"] .t-card,html[data-ui="student"] .deadline-banner,
+html[data-ui="teacher"] .lesson-card,html[data-ui="teacher"] .banner,html[data-ui="teacher"] .lit-item,html[data-ui="teacher"] .plan-item{
+  background:var(--c-surface);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-card);
+  box-shadow:var(--shadow-soft);
+}
+/* день студента */
+html[data-ui="student"] main{max-width:var(--w-page);padding:var(--sp-4) var(--sp-4) var(--sp-8)}
+html[data-ui="student"] .dv-list{gap:var(--sp-3);max-width:760px}
+html[data-ui="student"] .dv-card{padding:var(--sp-4);border-left-width:4px;gap:var(--sp-4)}
+html[data-ui="student"] .dv-card.done-green{background:linear-gradient(0deg,rgba(111,211,160,.12),rgba(111,211,160,.12)),var(--c-surface)}
+html[data-ui="student"] .dv-card.due-yellow{background:linear-gradient(0deg,rgba(232,184,90,.12),rgba(232,184,90,.12)),var(--c-surface)}
+html[data-ui="student"] .dv-card.due-red{background:linear-gradient(0deg,rgba(236,122,116,.13),rgba(236,122,116,.13)),var(--c-surface)}
+html[data-ui="student"] .dv-card.current-slot{box-shadow:0 0 0 2px var(--c-today),var(--shadow-soft)}
+html[data-ui="student"] .dv-time{width:68px;font-size:var(--fs-sm);font-weight:600;color:var(--c-accent);font-variant-numeric:tabular-nums}
+html[data-ui="student"] .dv-subj{font-size:var(--fs-lg);font-weight:700;line-height:1.3}
+html[data-ui="student"] .dv-meta{font-size:var(--fs-md);color:var(--c-text-2);margin-top:4px}
+html[data-ui="student"] .dv-nav,html[data-ui="student"] .dv-more,html[data-ui="student"] .dv-empty-msg,
+html[data-ui="student"] .widget,html[data-ui="student"] .deadline-banner,html[data-ui="student"] .current-status{max-width:760px}
+html[data-ui="student"] .day-view-header .dv-day{font-size:var(--fs-2xl);font-weight:700}
+html[data-ui="student"] .day-view-header .dv-date{font-size:var(--fs-md);color:var(--c-text-2)}
+html[data-ui="student"] .dv-nav-btn,html[data-ui="teacher"] .nav-btn{width:44px;height:44px;border-radius:var(--r-pill);background:var(--c-surface);border:1px solid var(--c-border);color:var(--c-text);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
+html[data-ui="student"] .widget{gap:var(--sp-3)}
+html[data-ui="student"] .widget .w-card{padding:var(--sp-4)}
+html[data-ui="student"] .widget .w-l{font-size:var(--fs-xs);color:var(--c-text-2);font-weight:600}
+html[data-ui="student"] .widget .w-v{font-size:var(--fs-lg);font-weight:700;margin-top:4px}
+html[data-ui="student"] .widget .w-s{font-size:var(--fs-sm);margin-top:4px}
+html[data-ui="student"] .widget .w-big{font-size:1.75rem;font-weight:700;color:var(--c-today)}
+html[data-ui="student"] .deadline-banner{padding:var(--sp-3) var(--sp-4);font-size:var(--fs-md);border-color:rgba(232,184,90,.4);background:linear-gradient(0deg,rgba(232,184,90,.12),rgba(232,184,90,.12)),var(--c-surface)}
+html[data-ui="student"] .current-status{border-radius:var(--r-card);font-size:var(--fs-md)}
+/* день преподавателя */
+html[data-ui="teacher"] #dayView{max-width:640px !important}
+html[data-ui="teacher"] .daynav{margin:var(--sp-4) 0 var(--sp-5)}
+html[data-ui="teacher"] .day-label .dv-day{font-family:var(--font);font-size:var(--fs-xl);font-weight:700}
+html[data-ui="teacher"] .day-label .dv-date{font-size:var(--fs-md)}
+html[data-ui="teacher"] .lesson-card{padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-3)}
+html[data-ui="teacher"] .lesson-time{font-family:var(--font);font-size:var(--fs-sm);font-weight:600;letter-spacing:.02em}
+html[data-ui="teacher"] .lesson-subject{font-size:var(--fs-lg);font-weight:700;line-height:1.3}
+html[data-ui="teacher"] .lesson-meta{font-size:var(--fs-md)}
+html[data-ui="teacher"] .hw-status{font-size:var(--fs-sm);font-weight:600}
+html[data-ui="teacher"] .empty-day{font-size:var(--fs-base)}
+html[data-ui="teacher"] .banner{font-size:var(--fs-md);padding:var(--sp-3) var(--sp-4)}
+html[data-ui="teacher"] .banner b{font-family:var(--font);font-size:var(--fs-md)}
+
+/* ================= Таблица на 2 недели ================= */
+html[data-ui] .scroll{background:var(--c-surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--c-border);border-radius:var(--r-card);box-shadow:var(--shadow-soft)}
+html[data-ui] th{background:var(--c-surface-solid);color:var(--c-accent);font-size:var(--fs-sm);font-weight:600;padding:10px 4px;font-variant-numeric:tabular-nums}
+html[data-ui] td{border-color:var(--c-border)}
+html[data-ui] td.day,html[data-ui="student"] .day{background:var(--c-surface-solid);font-size:var(--fs-md);font-weight:700}
+html[data-ui] td.day .d-date,html[data-ui="student"] .day .d-date{font-size:var(--fs-xs);color:var(--c-text-2)}
+html[data-ui="student"] .slot{height:104px;padding:6px 7px}
+html[data-ui="student"] .slot.split{height:104px}
+html[data-ui="student"] .s-subj{font-size:var(--fs-sm);font-weight:600;color:var(--c-text);line-height:1.25;max-height:2.5em}
+html[data-ui="student"] .s-meta{font-size:var(--fs-xs);color:var(--c-text-2);line-height:1.3;max-height:2.6em}
+html[data-ui="student"] .tag-dz,html[data-ui="student"] .tag-t{font-size:.625rem;padding:1px 5px;border-radius:5px}
+html[data-ui="teacher"] td.slot{height:96px;padding:6px 7px}
+html[data-ui="teacher"] td.slot .s-grp{font-size:var(--fs-sm);font-weight:700}
+html[data-ui="teacher"] td.slot .s-subj,html[data-ui="teacher"] td.slot .s-room{font-size:var(--fs-xs);line-height:1.3}
+html[data-ui] .week-title{font-family:var(--font);font-size:var(--fs-xl);font-weight:700}
+/* сегодня и текущая пара — одинаково на обеих страницах */
+html[data-ui] th.current-slot{background:var(--c-today) !important;color:#1F1406 !important}
+html[data-ui] td.day.current-day{background:linear-gradient(0deg,rgba(233,165,74,.18),rgba(233,165,74,.18)),var(--c-surface-solid);border-left:3px solid var(--c-today)}
+html[data-ui] td.day.current-day .d-date{color:var(--today-dark);font-weight:600}
+html[data-ui] td.slot.current-slot{box-shadow:inset 0 0 0 2px var(--c-today)}
+
+/* ================= Модальные окна ================= */
+html[data-ui="student"] .ov,html[data-ui="teacher"] .overlay{background:rgba(2,12,11,.6);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+html[data-ui="student"] .mod,html[data-ui="teacher"] .modal{background:var(--c-surface-solid);border:1px solid var(--c-border);border-bottom:none;border-radius:var(--r-modal) var(--r-modal) 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.4)}
+@media(min-width:600px){
+  html[data-ui="student"] .mod{border-radius:var(--r-modal);border-bottom:1px solid var(--c-border)}
+  html[data-ui="teacher"] .overlay{align-items:center;padding:16px}
+  html[data-ui="teacher"] .modal{border-radius:var(--r-modal);border-bottom:1px solid var(--c-border)}
+}
+html[data-ui="student"] .mod-h{background:var(--c-surface-solid);padding:var(--sp-4) var(--sp-5)}
+html[data-ui="student"] .mod-h h3,html[data-ui="teacher"] .modal h3{font-family:var(--font);font-size:var(--fs-lg);font-weight:700}
+html[data-ui="student"] .mod-b{padding:var(--sp-4) var(--sp-5) var(--sp-6)}
+html[data-ui="student"] .mod-x{width:36px;height:36px;padding:0;background:rgba(255,255,255,.08)}
+html[data-ui="teacher"] .modal{padding:var(--sp-5) var(--sp-5) var(--sp-6)}
+html[data-ui="teacher"] .modal .modal-sub{font-size:var(--fs-md)}
+html[data-ui="student"] .info{background:rgba(255,255,255,.04);border:1px solid var(--c-border);border-radius:var(--r-md);padding:10px 12px}
+html[data-ui="student"] .info .l{font-size:var(--fs-xs);letter-spacing:.04em;color:var(--c-text-2)}
+html[data-ui="student"] .info .v{font-size:var(--fs-base);font-weight:600}
+html[data-ui="student"] .hw{background:rgba(255,255,255,.04);border-left:3px solid var(--c-accent);border-radius:0 var(--r-md) var(--r-md) 0;font-size:var(--fs-base);line-height:1.55;padding:12px 14px}
+html[data-ui="student"] .topic{background:rgba(255,255,255,.04);border:1px solid var(--c-border);border-radius:var(--r-md);padding:10px 12px}
+html[data-ui="student"] .topic.ok{background:rgba(111,211,160,.10);border-color:rgba(111,211,160,.3)}
+html[data-ui="student"] .topic .tt{font-size:var(--fs-md)}
+html[data-ui="student"] .topic .tw{font-size:var(--fs-xs)}
+html[data-ui="student"] .topics h4{font-size:var(--fs-md);color:var(--c-text);font-weight:700}
+html[data-ui="student"] .hw-file{border-radius:var(--r-md);font-size:var(--fs-md);padding:10px 12px;overflow-wrap:anywhere;word-break:normal}
+html[data-ui="student"] .hw-imgs img{width:96px;height:96px;border-radius:var(--r-md)}
+html[data-ui="student"] .done-btn{min-height:var(--h-control);border-radius:var(--r-md);font-size:var(--fs-base);border-width:1px}
+/* модальные вкладки преподавателя */
+html[data-ui="teacher"] .mtab,html[data-ui="teacher"] .chip-btn{font-family:var(--font);font-size:var(--fs-sm);font-weight:600;min-height:36px;border-width:1px}
+html[data-ui="teacher"] .tab{font-family:var(--font)}
+html[data-ui="teacher"] .att-row{padding:8px 10px;border-radius:var(--r-md)}
+html[data-ui="teacher"] .att-row .nm{font-size:var(--fs-md)}
+html[data-ui="teacher"] .att-st button{min-height:34px;font-size:var(--fs-xs);padding:6px 8px}
+html[data-ui="teacher"] .sub-item,html[data-ui="teacher"] .check-row{border-radius:var(--r-md)}
+html[data-ui="teacher"] .plan-item .no{font-family:var(--font)}
+html[data-ui="teacher"] .jt th.d{font-size:var(--fs-xs)}
+html[data-ui="teacher"] .jt td.c{font-size:var(--fs-md);min-width:42px}
+
+/* ================= Уведомления, загрузка ================= */
+html[data-ui] .toast{font-size:var(--fs-md);font-weight:500;border-radius:var(--r-md);background:#0F2F2B;color:var(--c-text);border:1px solid var(--c-border-strong);box-shadow:0 8px 28px rgba(0,0,0,.4);max-width:min(92vw,460px);text-align:center;line-height:1.4}
+html[data-ui] .loading,html[data-ui] .hint{color:var(--c-text-2);font-size:var(--fs-md)}
+
+/* ================= Длинные тексты не ломают вёрстку ================= */
+html[data-ui] .dv-subj,html[data-ui] .lesson-subject,html[data-ui] .t-name,html[data-ui] .lit-item .t,html[data-ui] .att-row .nm{overflow-wrap:anywhere}
+
+/* ================= Ширина на больших экранах ================= */
+@media (min-width:1024px){
+  html[data-ui="student"] main{padding:var(--sp-6) var(--sp-6) var(--sp-8)}
+  html[data-ui="teacher"] #weeksView,html[data-ui="teacher"] #journalView{max-width:var(--w-page) !important}
+}
+
+/* Кнопки, которым нужен свой размер текста */
+html[data-ui] .tabbar button{font-size:.6875rem;border-radius:12px}
+html[data-ui] .mod-x,html[data-ui] .ds-x{font-size:1.25rem}
+html[data-ui] .dv-nav-btn,html[data-ui] .nav-btn{font-size:1.2rem}
+html[data-ui] .ds-btn{font-size:var(--fs-base)}
+html[data-ui] .ds-row{font-size:var(--fs-base)}
+html[data-ui] .ds-ic svg{width:20px;height:20px;display:block;color:var(--c-accent)}
+html[data-ui] .ds-row.danger .ds-ic svg{color:var(--c-danger)}
+html[data-ui] .att-row .mk{min-height:34px !important;padding:6px 8px}
+
+/* Список студентов на телефоне: имя сверху, кнопки отметок под ним */
+@media (max-width:520px){
+  html[data-ui="teacher"] .att-row{flex-wrap:wrap;row-gap:6px}
+  html[data-ui="teacher"] .att-row .nm{flex:1 1 100%}
+  html[data-ui="teacher"] .att-row .mk{flex:0 0 64px;width:64px}
+  html[data-ui="teacher"] .att-st{flex:1;justify-content:flex-end}
+}
+html[data-ui="teacher"] #qrStartBtn{display:flex;align-items:center;justify-content:center;gap:8px}
+html[data-ui="teacher"] #qrStartBtn svg{width:20px;height:20px}
