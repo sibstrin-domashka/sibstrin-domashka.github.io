@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Домашка — Учителям</title>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest-teacher.json">
 <meta name="theme-color" content="#051F20">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -87,6 +89,7 @@ header{
   font-family:'Unbounded',sans-serif;
 }
 .hw-btn:active{background:rgba(79,209,165,.1)}
+.hw-btn.att-btn{margin-top:8px;border-color:var(--border);color:var(--text-primary)}
 .empty-day{
   text-align:center;color:var(--text-secondary);padding:50px 20px;font-size:.92rem;line-height:1.5;
 }
@@ -122,7 +125,8 @@ textarea:focus,input:focus{outline:none;border-color:var(--accent)}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
 
 /* ---------- View tabs ---------- */
-.tabs{display:flex;gap:8px;max-width:520px;margin:6px auto 0;padding:0 16px}
+.tabs{display:flex;gap:6px;max-width:620px;margin:6px auto 0;padding:0 16px;overflow-x:auto}
+.tabs .tab{flex:1 0 auto;padding:10px 12px}
 .tab{
   flex:1;padding:10px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);
   color:var(--text-secondary);font-weight:700;font-size:.85rem;cursor:pointer;font-family:'Unbounded',sans-serif;
@@ -169,6 +173,64 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
 .lit-item .a a,.lit-item .a button{font-size:.8rem;color:var(--accent);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;cursor:pointer}
 .lit-item .a button.del{color:var(--danger)}
 
+/* ---------- Lesson modal tabs ---------- */
+.mtabs{display:flex;gap:6px;margin:0 0 6px;flex-wrap:wrap}
+.mtab{flex:1;padding:9px 6px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--text-secondary);font-weight:700;font-size:.78rem;cursor:pointer;font-family:inherit}
+.mtab.on{background:var(--accent);color:#052421;border-color:var(--accent)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chip-btn{padding:7px 12px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--text-primary);font-size:.8rem;cursor:pointer}
+.chip-btn.on{border-color:var(--accent);color:var(--accent)}
+.att-tools{display:flex;align-items:center;gap:10px;margin:12px 0 8px}
+.att-tools .btn{padding:9px 12px;font-size:.78rem}
+.att-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto}
+.att-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:7px 9px}
+.att-row .nm{flex:1;font-size:.84rem;line-height:1.25}
+.att-row .nm small{display:block;color:var(--text-secondary);font-size:.68rem}
+.att-st{display:flex;gap:4px}
+.att-st button{border:1px solid var(--border);background:transparent;color:var(--text-secondary);border-radius:8px;padding:6px 7px;font-size:.72rem;cursor:pointer;font-family:inherit}
+.att-st button.on[data-s="present"]{background:rgba(79,209,165,.18);color:var(--accent);border-color:var(--accent)}
+.att-st button.on[data-s="absent"]{background:rgba(232,96,92,.18);color:var(--danger);border-color:var(--danger)}
+.att-st button.on[data-s="late"],.att-st button.on[data-s="excused"]{background:rgba(224,177,60,.16);color:var(--warn);border-color:var(--warn)}
+.sub-item{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.sub-item .who{font-weight:700;font-size:.88rem}
+.sub-item .when{color:var(--text-secondary);font-size:.72rem}
+.sub-item .files a{display:inline-block;margin:6px 8px 0 0;color:var(--accent);font-size:.8rem}
+.sub-item .grade-row{display:flex;gap:6px;margin-top:8px}
+.sub-item .grade-row input{padding:8px 10px;font-size:.85rem}
+.sub-item .grade-row .sc{width:80px;flex-shrink:0}
+.sub-item .grade-row button{padding:8px 12px;font-size:.78rem}
+.missing{color:var(--text-secondary);font-size:.8rem;line-height:1.5;margin-top:10px}
+.chg-badge{display:block;margin-top:10px;padding:8px 11px;border-radius:10px;font-size:.82rem;font-weight:600;line-height:1.35}
+.chg-badge.cancelled{background:rgba(232,96,92,.14);color:var(--danger)}
+.chg-badge.substitute,.chg-badge.online{background:rgba(224,177,60,.14);color:var(--warn)}
+.chg-badge small{display:block;font-weight:400;opacity:.9}
+td.slot .tag-chg{display:inline-block;font-size:.6rem;font-weight:800;border-radius:4px;padding:1px 4px;margin-bottom:3px;background:var(--danger);color:#fff}
+td.slot .tag-chg.sub{background:var(--warn);color:#052421}
+.banner{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:.85rem;line-height:1.45}
+.banner b{font-family:'Unbounded',sans-serif;font-size:.82rem}
+.banner .btn{padding:9px 12px;font-size:.78rem;margin-top:8px;width:100%}
+.plan-item{display:flex;gap:8px;align-items:flex-start;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.plan-item .no{font-family:'Unbounded',sans-serif;color:var(--accent);font-weight:700;min-width:24px}
+.plan-item .tx{flex:1;font-size:.86rem;white-space:pre-wrap;line-height:1.4}
+.plan-item .ops{display:flex;flex-direction:column;gap:4px}
+.plan-item .ops button{background:none;border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:2px 7px;cursor:pointer;font-size:.75rem}
+.plan-item .ops button.del{color:var(--danger)}
+.plan-sugg{background:rgba(79,209,165,.08);border:1px dashed var(--accent);border-radius:10px;padding:9px 11px;font-size:.82rem;margin-bottom:8px;display:none}
+.plan-sugg button{margin-top:6px;padding:7px 10px;font-size:.76rem}
+
+/* ---------- Journal ---------- */
+.j-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.j-bar select{flex:1;min-width:160px}
+.j-bar .btn{padding:10px 12px;font-size:.8rem}
+.jt{overflow-x:auto;border:1px solid var(--border);border-radius:14px;background:var(--bg-card)}
+.jt table{min-width:0;table-layout:auto}
+.jt th,.jt td{padding:6px 8px;font-size:.8rem;white-space:nowrap}
+.jt td.name{position:sticky;left:0;background:var(--bg-card-2);font-weight:600;z-index:1}
+.jt input{width:62px;padding:6px 4px;text-align:center;font-size:.85rem;border-radius:8px}
+.jt input.saved{border-color:var(--accent)}
+.jt th small{display:block;color:var(--text-secondary);font-weight:400}
+.jt th .del-col{background:none;border:none;color:var(--danger);cursor:pointer;font-size:.8rem}
+
 /* ---------- Topics students took ---------- */
 .topics-list{display:flex;flex-direction:column;gap:6px}
 .topic-row{display:flex;justify-content:space-between;gap:10px;background:rgba(79,209,165,.08);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.85rem}
@@ -190,6 +252,7 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
   background:var(--bg-card-2);color:var(--text-primary);padding:12px 18px;border-radius:12px;
   font-size:.85rem;box-shadow:var(--shadow);z-index:100;opacity:0;transition:opacity .2s;
   border:1px solid var(--border);max-width:90vw;text-align:center;
+  pointer-events:none; /* never block buttons under it, even while fading */
 }
 .toast.show{opacity:1}
 </style>
@@ -201,12 +264,17 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
 <div id="app" style="display:none">
   <header>
     <div class="chip"><span class="dot"></span><span id="nameChip">—</span></div>
-    <button class="logout" id="logoutBtn">Выйти</button>
+    <div style="display:flex;gap:12px;align-items:center">
+      <button class="logout" id="sickBtn" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:7px 12px">🤒 Меня не будет</button>
+      <button class="logout" id="logoutBtn">Выйти</button>
+    </div>
   </header>
 
   <div class="tabs">
     <button class="tab on" id="tabDay">День</button>
     <button class="tab" id="tabWeeks">2 недели</button>
+    <button class="tab" id="tabJournal">Журнал</button>
+    <button class="tab" id="tabPlan">План</button>
     <button class="tab" id="tabLit">Литература</button>
   </div>
 
@@ -220,10 +288,33 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
       <button class="nav-btn" id="dvNext">→</button>
     </div>
 
+    <div id="dvBanners"></div>
     <div id="dvList"></div>
   </div>
 
   <div id="weeksView" style="display:none"></div>
+
+  <div id="journalView" style="display:none;max-width:1100px;margin:16px auto 0;padding:0 16px">
+    <div class="j-bar">
+      <select id="jGroup"></select>
+      <select id="jSubject"></select>
+    </div>
+    <div class="j-bar">
+      <button class="btn btn-outline" id="jAddCol">+ Колонка оценок</button>
+      <button class="btn btn-outline" id="jExportGrades">⬇ Оценки (Excel)</button>
+      <button class="btn btn-outline" id="jExportAtt">⬇ Посещаемость (Excel)</button>
+    </div>
+    <div id="jTable"></div>
+  </div>
+
+  <div id="planView" style="display:none;max-width:620px;margin:16px auto 0;padding:0 16px">
+    <div class="j-bar"><select id="planSubject"></select></div>
+    <div class="modal-sub" style="margin-bottom:10px">Распишите задания на семестр по порядку. Перед парой нажмите «Из плана» в окне задания — или выдайте всё на неделю одной кнопкой на экране «День».</div>
+    <div id="planList"></div>
+    <textarea id="planNew" placeholder="Новое задание в план... (можно вставить сразу много — каждое с новой строки, пустая строка между заданиями)" style="margin-top:10px;min-height:90px"></textarea>
+    <button class="btn" id="planAdd" style="width:100%;margin-top:8px">+ Добавить в план</button>
+    <div id="planProgress" class="modal-sub" style="margin-top:12px"></div>
+  </div>
 
   <div id="litView" style="display:none;max-width:620px;margin:16px auto 0;padding:0 16px">
     <button class="btn" id="litAddBtn" style="width:100%">+ Добавить литературу</button>
@@ -266,7 +357,31 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
   <div class="modal">
     <h3 id="hwModalTitle">Домашнее задание</h3>
     <div class="modal-sub" id="hwModalSub">—</div>
+    <div class="mtabs">
+      <button class="mtab on" data-pane="paneHw">Задание</button>
+      <button class="mtab" data-pane="paneAtt">Посещаемость</button>
+      <button class="mtab" data-pane="paneSub">Сдачи <span id="subCount"></span></button>
+    </div>
+    <div id="paneAtt" class="pane" style="display:none">
+      <div id="attGroups" class="chips"></div>
+      <label>Дата пары</label>
+      <input type="date" id="attDate">
+      <button class="btn" id="qrStartBtn" style="width:100%;margin-top:12px">📱 Отметка по QR-коду</button>
+      <div class="att-tools"><button class="btn btn-outline" id="attAllBtn">Все были</button><span id="attSummary" class="modal-sub" style="margin:0"></span></div>
+      <div id="attList" class="att-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline att-close" style="flex:1">Закрыть</button>
+        <button class="btn" id="attSaveBtn" style="flex:2">Сохранить посещаемость</button>
+      </div>
+    </div>
+    <div id="paneSub" class="pane" style="display:none">
+      <div id="subList"></div>
+      <div class="modal-actions"><button class="btn btn-outline att-close" style="flex:1">Закрыть</button></div>
+    </div>
+    <div id="paneHw" class="pane">
     <label>Задание</label>
+    <div class="plan-sugg" id="planSugg"></div>
+    <select id="hwTemplate" style="margin-bottom:8px;display:none"></select>
     <textarea id="hwDesc" placeholder="Что нужно сделать к следующему занятию..."></textarea>
     <label>Фото и файлы</label>
     <div class="attach-btns">
@@ -281,7 +396,7 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
       <div id="topicsList" class="topics-list"></div>
     </div>
     <label>Сдать до</label>
-    <input type="date" id="hwDue">
+    <div style="display:flex;gap:8px"><input type="date" id="hwDue" style="flex:1"><button type="button" class="btn btn-outline" id="hwDueNext" style="padding:10px 12px;font-size:.78rem;white-space:nowrap">К след. паре</button></div>
     <div id="streamWrap" style="display:none">
       <label>Поток — то же задание другим группам</label>
       <div id="streamList" class="check-list"></div>
@@ -291,6 +406,88 @@ label.check-row{margin:0;font-weight:500;color:var(--text-primary)}
       <button class="btn" id="hwSaveBtn" style="flex:2">Сохранить для группы</button>
     </div>
     <button class="btn" id="hwSaveStreamBtn" style="width:100%;margin-top:10px;display:none">Сохранить для потока</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LESSON CHANGE MODAL ===================== -->
+<div class="overlay" id="chgOverlay">
+  <div class="modal">
+    <h3>Изменение пары</h3>
+    <div class="modal-sub" id="chgSub">—</div>
+    <label>Дата</label>
+    <input type="date" id="chgDate">
+    <label>Что будет</label>
+    <div class="check-list" id="chgKinds">
+      <label class="check-row"><input type="radio" name="chgKind" value="cancelled" checked><span><b>Пары не будет</b><span class="sub">Студенты увидят «Пара отменена — вы свободны»</span></span></label>
+      <label class="check-row"><input type="radio" name="chgKind" value="substitute"><span><b>Будет замена</b><span class="sub">Укажите, кто проведёт</span></span></label>
+      <label class="check-row"><input type="radio" name="chgKind" value="online"><span><b>Пара онлайн</b><span class="sub">Ссылку можно написать в комментарии</span></span></label>
+    </div>
+    <div id="chgSubWrap" style="display:none"><label>Кто заменяет</label><input id="chgSubName" placeholder="Иванов И. И."></div>
+    <label>Комментарий (необязательно)</label>
+    <input id="chgNote" placeholder="Например: задание на дом — §5">
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="chgCancel" style="flex:1">Закрыть</button>
+      <button class="btn" id="chgSave" style="flex:2">Сохранить</button>
+    </div>
+    <button class="btn btn-outline" id="chgRemove" style="width:100%;margin-top:10px;display:none;color:var(--danger)">Убрать изменение — пара как обычно</button>
+  </div>
+</div>
+
+<!-- ===================== SICK / ABSENCE MODAL ===================== -->
+<div class="overlay" id="sickOverlay">
+  <div class="modal">
+    <h3>🤒 Меня не будет</h3>
+    <div class="modal-sub">Все ваши пары в эти дни получат отметку. Студенты увидят её в расписании.</div>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label>С</label><input type="date" id="sickFrom"></div>
+      <div style="flex:1"><label>По</label><input type="date" id="sickTo"></div>
+    </div>
+    <label>Что будет с парами</label>
+    <div class="check-list">
+      <label class="check-row"><input type="radio" name="sickKind" value="cancelled" checked><span><b>Пары отменяются</b></span></label>
+      <label class="check-row"><input type="radio" name="sickKind" value="substitute"><span><b>Будет замена</b></span></label>
+      <label class="check-row"><input type="radio" name="sickKind" value="online"><span><b>Пары онлайн</b></span></label>
+    </div>
+    <div id="sickSubWrap" style="display:none"><label>Кто заменяет</label><input id="sickSubName" placeholder="Иванов И. И."></div>
+    <label>Комментарий (необязательно)</label>
+    <input id="sickNote" placeholder="Например: преподаватель на больничном">
+    <div id="sickPreview" class="modal-sub" style="margin-top:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="sickCancel" style="flex:1">Отмена</button>
+      <button class="btn" id="sickSave" style="flex:2">Отметить пары</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== QR CHECK-IN ===================== -->
+<div class="overlay" id="qrOverlay" style="align-items:center">
+  <div class="modal" style="border-radius:20px;text-align:center;max-width:480px">
+    <h3 id="qrTitle">Отметка по QR</h3>
+    <div class="modal-sub">Студенты сканируют код камерой телефона. Код меняется каждые 20 секунд.</div>
+    <div id="qrBox" style="background:#fff;border-radius:16px;padding:14px;display:inline-block;margin:6px auto"></div>
+    <div id="qrTimer" class="modal-sub" style="margin:8px 0 0"></div>
+    <div id="qrCount" style="font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.3rem;margin:10px 0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="qrClose" style="flex:1">Свернуть</button>
+      <button class="btn" id="qrFinish" style="flex:2">Завершить: остальных — «Нет»</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== GRADE COLUMN MODAL ===================== -->
+<div class="overlay" id="colOverlay">
+  <div class="modal">
+    <h3>Новая колонка оценок</h3>
+    <div class="modal-sub">Например: «Доклад», «Контрольная 1», «Зачёт».</div>
+    <label>Название</label>
+    <input id="colTitle" placeholder="Контрольная 1">
+    <label>Максимальный балл (необязательно)</label>
+    <input id="colMax" type="number" min="0" step="0.5" placeholder="5">
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="colCancel" style="flex:1">Отмена</button>
+      <button class="btn" id="colSave" style="flex:2">Добавить</button>
+    </div>
   </div>
 </div>
 
@@ -351,7 +548,7 @@ async function loadTeacherProfile(){
 
   await loadLessons();
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
-  try{ var sv = localStorage.getItem("domashka_teacher_view"); if(sv === "weeks" || sv === "lit") currentView = sv; }catch(e){}
+  try{ var sv = localStorage.getItem("domashka_teacher_view"); if(["weeks", "lit", "journal", "plan"].indexOf(sv) !== -1) currentView = sv; }catch(e){}
   setView(currentView);
 }
 
@@ -441,6 +638,7 @@ async function loadLessons(){
     return;
   }
   lessonsCache = res.data || [];
+  await loadChanges();
 }
 
 // A lecture shared by several groups ("121, 122, 124, 128 гр.") is stored
@@ -484,6 +682,7 @@ function renderDay(){
   var wrap = document.getElementById("dvList");
   wrap.innerHTML = "";
 
+  renderBanners();
   if(!list.length){
     wrap.innerHTML = '<div class="empty-day">В этот день занятий нет.</div>';
     return;
@@ -503,12 +702,17 @@ function renderDay(){
           '<div class="lesson-meta">' + escapeHtml(c.groupLabel) + (c.room ? ' · ' + escapeHtml(c.room) : '') + '</div>' +
         '</div>' +
       '</div>' +
+      changeBadgeHtml(c) +
       '<div class="hw-status ' + (hasHw ? "done" : "pending") + '">' +
         (hasHw ? "✓ Задание добавлено" : "Задание ещё не добавлено") +
       '</div>' +
-      '<button class="hw-btn">' + (hasHw ? "Изменить задание" : "Добавить задание") + '</button>';
+      '<button class="hw-btn">' + (hasHw ? "Изменить задание" : "Добавить задание") + '</button>' +
+      '<button class="hw-btn att-btn">✓ Посещаемость</button>' +
+      '<button class="hw-btn att-btn chg-btn">⚠ Отмена / замена</button>';
 
     card.querySelector(".hw-btn").onclick = function(){ openHwModal(c); };
+    card.querySelector(".att-btn").onclick = function(){ openHwModal(c, "paneAtt"); };
+    card.querySelector(".chg-btn").onclick = function(){ openChange(c); };
     wrap.appendChild(card);
   });
 }
@@ -521,6 +725,10 @@ function setView(v){
   document.getElementById("tabDay").classList.toggle("on", v === "day");
   document.getElementById("tabWeeks").classList.toggle("on", v === "weeks");
   document.getElementById("tabLit").classList.toggle("on", v === "lit");
+  document.getElementById("tabJournal").classList.toggle("on", v === "journal");
+  document.getElementById("journalView").style.display = v === "journal" ? "block" : "none";
+  document.getElementById("tabPlan").classList.toggle("on", v === "plan");
+  document.getElementById("planView").style.display = v === "plan" ? "block" : "none";
   document.getElementById("litView").style.display = v === "lit" ? "block" : "none";
   document.getElementById("dayView").style.display = v === "day" ? "block" : "none";
   document.getElementById("weeksView").style.display = v === "weeks" ? "block" : "none";
@@ -529,10 +737,14 @@ function setView(v){
 document.getElementById("tabDay").onclick = function(){ setView("day"); };
 document.getElementById("tabWeeks").onclick = function(){ setView("weeks"); };
 document.getElementById("tabLit").onclick = function(){ setView("lit"); };
+document.getElementById("tabJournal").onclick = function(){ setView("journal"); };
+document.getElementById("tabPlan").onclick = function(){ setView("plan"); };
 
 function renderAll(){
   if(currentView === "weeks") renderWeeks();
   else if(currentView === "lit") loadLiterature();
+  else if(currentView === "journal") initJournal();
+  else if(currentView === "plan") initPlan();
   else renderDay();
 }
 
@@ -582,7 +794,9 @@ function renderWeeks(){
         var cls = "slot" + (cards.length ? " has" : "") + (isToday ? " current-day" : "") + (isToday && t2 === curSlot ? " current-slot" : "");
         html += '<td class="' + cls + '" data-w="' + w + '" data-d="' + d + '" data-t="' + t2 + '">';
         cards.forEach(function(c, ci){
+          var ch = changeOf(c);
           html += '<div class="part" data-ci="' + ci + '">' +
+            (ch ? '<span class="tag-chg' + (ch.kind === "cancelled" ? "" : " sub") + '">' + (ch.kind === "cancelled" ? "ОТМЕНА" : ch.kind === "online" ? "ОНЛАЙН" : "ЗАМЕНА") + '</span> ' : '') +
             (c.hw ? '<span class="tag-dz">ДЗ</span>' : '') +
             '<div class="s-grp">' + escapeHtml(c.groupLabel) + '</div>' +
             '<div class="s-subj">' + escapeHtml(c.subject || "") + '</div>' +
@@ -769,8 +983,10 @@ function renderStream(c){
   };
 }
 
-function openHwModal(c){
+var activeCard = null;
+function openHwModal(c, pane){
   activeLessons = c.rows;
+  activeCard = c;
   document.getElementById("hwModalTitle").textContent = c.subject || "Домашнее задание";
   document.getElementById("hwModalSub").textContent = c.groupLabel + (c.room ? " · " + c.room : "");
   document.getElementById("hwDesc").value = c.hw && c.hw.description ? c.hw.description : "";
@@ -781,6 +997,10 @@ function openHwModal(c){
   renderAttachList();
   loadTakenTopics(c);
   renderStream(c);
+  fillTemplates(c);
+  suggestFromPlan(c);
+  showPane(pane || "paneHw");
+  loadSubmissionsCount(c);
   document.getElementById("hwOverlay").classList.add("active");
 }
 
@@ -853,6 +1073,7 @@ async function saveHomework(withStream){
       showToast("Не сохранилось: " + res.error.message);
       return;
     }
+    await markPlanIssued(slots);
 
     attachNew.forEach(function(n){ if(n.preview) URL.revokeObjectURL(n.preview); });
     attachNew = [];
@@ -870,6 +1091,727 @@ async function saveHomework(withStream){
 document.getElementById("hwSaveBtn").onclick = function(){ saveHomework(false); };
 document.getElementById("hwSaveStreamBtn").onclick = function(){ saveHomework(true); };
 
+
+/* ================= Lesson changes (отмена / замена / онлайн) ================= */
+var changesCache = {}; // slot_id|date -> change
+async function loadChanges(){
+  changesCache = {};
+  var ids = lessonsCache.map(function(l){ return l.id; });
+  if(!ids.length) return;
+  var since = new Date(); since.setDate(since.getDate() - 21);
+  var r = await sb.from("lesson_changes").select("*").in("schedule_slot_id", ids).gte("lesson_date", isoDate(since));
+  if(r.error) return; // table not installed yet - just no badges
+  (r.data || []).forEach(function(x){ changesCache[x.schedule_slot_id + "|" + x.lesson_date] = x; });
+}
+function cardDate(c){ var d = dateFor(c.rows[0].week_number, c.rows[0].day_index); return d ? isoDate(d) : null; }
+function changeOf(c){
+  var d = cardDate(c); if(!d) return null;
+  for(var i = 0; i < c.rows.length; i++){ var x = changesCache[c.rows[i].id + "|" + d]; if(x) return x; }
+  return null;
+}
+var CHG_TEXT = { cancelled: "Пара отменена — студенты свободны", substitute: "Замена", online: "Пара онлайн" };
+function changeBadgeHtml(c){
+  var x = changeOf(c); if(!x) return "";
+  return '<div class="chg-badge ' + x.kind + '">⚠ ' + CHG_TEXT[x.kind] + (x.kind === "substitute" && x.substitute_name ? ": " + escapeHtml(x.substitute_name) : "") +
+    (x.note ? '<small>' + escapeHtml(x.note) + '</small>' : '') + '</div>';
+}
+var chgCard = null;
+function kindRadios(name){ return document.querySelectorAll('input[name="' + name + '"]'); }
+function pickedKind(name){ var v = "cancelled"; kindRadios(name).forEach(function(r){ if(r.checked) v = r.value; }); return v; }
+kindRadios("chgKind").forEach(function(r){ r.onchange = function(){ document.getElementById("chgSubWrap").style.display = pickedKind("chgKind") === "substitute" ? "block" : "none"; }; });
+kindRadios("sickKind").forEach(function(r){ r.onchange = function(){ document.getElementById("sickSubWrap").style.display = pickedKind("sickKind") === "substitute" ? "block" : "none"; }; });
+function openChange(c){
+  chgCard = c;
+  document.getElementById("chgSub").textContent = (c.subject || "") + " · " + c.groupLabel + " · пара " + (c.slot_index + 1);
+  document.getElementById("chgDate").value = cardDate(c) || isoDate(new Date());
+  var x = changeOf(c);
+  kindRadios("chgKind").forEach(function(r){ r.checked = r.value === (x ? x.kind : "cancelled"); });
+  document.getElementById("chgSubWrap").style.display = x && x.kind === "substitute" ? "block" : "none";
+  document.getElementById("chgSubName").value = x && x.substitute_name || "";
+  document.getElementById("chgNote").value = x && x.note || "";
+  document.getElementById("chgRemove").style.display = x ? "block" : "none";
+  document.getElementById("chgOverlay").classList.add("active");
+}
+document.getElementById("chgCancel").onclick = function(){ document.getElementById("chgOverlay").classList.remove("active"); };
+document.getElementById("chgSave").onclick = async function(){
+  var date = document.getElementById("chgDate").value, kind = pickedKind("chgKind");
+  if(!date){ showToast("Укажите дату"); return; }
+  var rows = chgCard.rows.map(function(r){
+    return { schedule_slot_id: r.id, lesson_date: date, kind: kind,
+      substitute_name: kind === "substitute" ? (document.getElementById("chgSubName").value.trim() || null) : null,
+      note: document.getElementById("chgNote").value.trim() || null };
+  });
+  var res = await sb.from("lesson_changes").upsert(rows, { onConflict: "schedule_slot_id,lesson_date" });
+  if(res.error){ showToast("Не сохранилось: " + res.error.message); return; }
+  document.getElementById("chgOverlay").classList.remove("active");
+  showToast("Студенты увидят изменение в расписании");
+  await loadChanges(); renderAll();
+};
+document.getElementById("chgRemove").onclick = async function(){
+  var date = document.getElementById("chgDate").value;
+  var res = await sb.from("lesson_changes").delete().in("schedule_slot_id", chgCard.rows.map(function(r){ return r.id; })).eq("lesson_date", date);
+  if(res.error){ showToast("Не удалилось: " + res.error.message); return; }
+  document.getElementById("chgOverlay").classList.remove("active");
+  showToast("Пара снова как обычно");
+  await loadChanges(); renderAll();
+};
+
+// "Меня не будет": every lesson of mine between two dates. The site's schedule
+// is a 2-week cycle, so a date's week (1/2) is counted from week 1's Monday.
+function weekOfDate(d){
+  var mon1 = dateFor(1, 0), mon2 = dateFor(2, 0);
+  var anchor = mon1 || mon2, anchorWeek = mon1 ? 1 : 2;
+  if(!anchor) return null;
+  var days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())) / 86400000);
+  var wk = Math.floor(days / 7);
+  var odd = ((wk % 2) + 2) % 2;
+  return odd === 0 ? anchorWeek : (anchorWeek === 1 ? 2 : 1);
+}
+function lessonsInRange(from, to){
+  var out = [];
+  for(var d = new Date(from); d <= to; d.setDate(d.getDate() + 1)){
+    var day = (d.getDay() + 6) % 7, wk = weekOfDate(d);
+    if(!wk) continue;
+    var iso = isoDate(d);
+    lessonsCache.forEach(function(l){ if(l.week_number === wk && l.day_index === day) out.push({ row: l, date: iso }); });
+  }
+  return out;
+}
+function sickRange(){
+  var f = document.getElementById("sickFrom").value, t = document.getElementById("sickTo").value;
+  if(!f || !t) return null;
+  var a = new Date(f + "T00:00:00"), b = new Date(t + "T00:00:00");
+  if(b < a) return null;
+  return [a, b];
+}
+function updateSickPreview(){
+  var r = sickRange(), el = document.getElementById("sickPreview");
+  if(!r){ el.textContent = ""; return; }
+  var list = lessonsInRange(r[0], r[1]);
+  var seen = {}; list.forEach(function(x){ seen[x.date + "|" + x.row.slot_index + "|" + x.row.subject] = true; });
+  el.textContent = "Пар в эти дни: " + Object.keys(seen).length + (list.length ? "" : " — проверьте даты");
+}
+document.getElementById("sickBtn").onclick = function(){
+  var t = isoDate(new Date());
+  document.getElementById("sickFrom").value = t; document.getElementById("sickTo").value = t;
+  document.getElementById("sickNote").value = ""; document.getElementById("sickSubName").value = "";
+  updateSickPreview();
+  document.getElementById("sickOverlay").classList.add("active");
+};
+document.getElementById("sickFrom").onchange = function(){ if(document.getElementById("sickTo").value < this.value) document.getElementById("sickTo").value = this.value; updateSickPreview(); };
+document.getElementById("sickTo").onchange = updateSickPreview;
+document.getElementById("sickCancel").onclick = function(){ document.getElementById("sickOverlay").classList.remove("active"); };
+document.getElementById("sickSave").onclick = async function(){
+  var r = sickRange(); if(!r){ showToast("Проверьте даты"); return; }
+  var kind = pickedKind("sickKind");
+  var rows = lessonsInRange(r[0], r[1]).map(function(x){
+    return { schedule_slot_id: x.row.id, lesson_date: x.date, kind: kind,
+      substitute_name: kind === "substitute" ? (document.getElementById("sickSubName").value.trim() || null) : null,
+      note: document.getElementById("sickNote").value.trim() || null };
+  });
+  if(!rows.length){ showToast("В эти дни у вас нет пар"); return; }
+  var btn = this; btn.disabled = true;
+  var res = await sb.from("lesson_changes").upsert(rows, { onConflict: "schedule_slot_id,lesson_date" });
+  btn.disabled = false;
+  if(res.error){ showToast("Не сохранилось: " + res.error.message); return; }
+  document.getElementById("sickOverlay").classList.remove("active");
+  showToast("Готово. Выздоравливайте!");
+  await loadChanges(); renderAll();
+};
+
+/* ================= QR check-in ================= */
+var qr = { row: null, date: null, secret: null, timer: null, poll: null };
+function randomSecret(){ var a = new Uint8Array(16); crypto.getRandomValues(a); return Array.prototype.map.call(a, function(b){ return ("0" + b.toString(16)).slice(-2); }).join(""); }
+async function qrCodeFor(secret, w){
+  var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret + ":" + w));
+  return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("").slice(0, 8);
+}
+function studentAppUrl(){ return window.location.href.replace(/[^\/]*([?#].*)?$/, "") + "index_3_updated.html"; }
+async function drawQr(){
+  var w = Math.floor(Date.now() / 20000), code = await qrCodeFor(qr.secret, w);
+  var url = studentAppUrl() + "?checkin=" + qr.row.id + "." + qr.date + "." + code;
+  if(typeof qrcode === "undefined"){ document.getElementById("qrBox").textContent = "Не загрузилась библиотека QR — обновите страницу"; return; }
+  var q = qrcode(0, "M"); q.addData(url); q.make();
+  document.getElementById("qrBox").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+  var svg = document.querySelector("#qrBox svg"); if(svg){ svg.style.width = "min(72vw, 320px)"; svg.style.height = "auto"; svg.style.display = "block"; }
+  var left = 20 - Math.floor((Date.now() / 1000) % 20);
+  document.getElementById("qrTimer").textContent = "Новый код через " + left + " с";
+}
+async function pollQr(){
+  var r = await sb.from("qr_checkins").select("roster_id").eq("schedule_slot_id", qr.row.id).eq("lesson_date", qr.date);
+  var n = r.data ? r.data.length : 0;
+  document.getElementById("qrCount").textContent = "Отметились: " + n + (attStudents.length ? " из " + attStudents.length : "");
+  return r.data || [];
+}
+function stopQrTimers(){ clearInterval(qr.timer); clearInterval(qr.poll); qr.timer = qr.poll = null; }
+document.getElementById("qrStartBtn").onclick = async function(){
+  if(!attRow) return;
+  var date = document.getElementById("attDate").value;
+  if(!date){ showToast("Укажите дату"); return; }
+  var ex = await sb.from("qr_sessions").select("secret,active").eq("schedule_slot_id", attRow.id).eq("lesson_date", date).maybeSingle();
+  var secret = ex.data && ex.data.secret;
+  if(!secret){
+    secret = randomSecret();
+    var ins = await sb.from("qr_sessions").upsert({ schedule_slot_id: attRow.id, lesson_date: date, secret: secret, active: true }, { onConflict: "schedule_slot_id,lesson_date" });
+    if(ins.error){ showToast("Не получилось запустить QR: " + ins.error.message); return; }
+  } else if(!ex.data.active){
+    await sb.from("qr_sessions").update({ active: true }).eq("schedule_slot_id", attRow.id).eq("lesson_date", date);
+  }
+  qr.row = attRow; qr.date = date; qr.secret = secret;
+  document.getElementById("qrTitle").textContent = "Отметка · " + ((attRow.groups && attRow.groups.name) || "") + " гр.";
+  document.getElementById("qrOverlay").classList.add("active");
+  await drawQr(); await pollQr();
+  stopQrTimers();
+  qr.timer = setInterval(drawQr, 1000);
+  qr.poll = setInterval(pollQr, 3000);
+};
+document.getElementById("qrClose").onclick = function(){ stopQrTimers(); document.getElementById("qrOverlay").classList.remove("active"); };
+document.getElementById("qrFinish").onclick = async function(){
+  var got = await pollQr(), here = {};
+  got.forEach(function(x){ here[x.roster_id] = true; });
+  stopQrTimers();
+  await sb.from("qr_sessions").update({ active: false }).eq("schedule_slot_id", qr.row.id).eq("lesson_date", qr.date);
+  document.getElementById("qrOverlay").classList.remove("active");
+  // Everyone who scanned = "Был", the rest = "Нет" (late/excused marks are kept). Teacher can still fix by hand.
+  attStudents.forEach(function(s){
+    if(here[s.roster_id]) attState[s.roster_id] = attState[s.roster_id] === "late" ? "late" : "present";
+    else if(attState[s.roster_id] !== "excused") attState[s.roster_id] = "absent";
+  });
+  drawAttendance();
+  showToast("Отметки по QR перенесены — проверьте и нажмите «Сохранить посещаемость»");
+};
+
+/* ================= Course plan ================= */
+var planItems = [], planIssued = [];
+async function loadPlan(subject){
+  var r = await sb.from("course_plan").select("*").eq("teacher_id", teacherProfile.id).eq("subject", subject).order("position");
+  planItems = r.error ? [] : (r.data || []);
+  planIssued = [];
+  if(planItems.length){
+    var i = await sb.from("course_plan_issued").select("plan_id,group_id").in("plan_id", planItems.map(function(p){ return p.id; }));
+    planIssued = i.error ? [] : (i.data || []);
+  }
+}
+function nextPlanItem(groupId){
+  var done = {}; planIssued.forEach(function(x){ if(x.group_id === groupId) done[x.plan_id] = true; });
+  return planItems.filter(function(p){ return !done[p.id]; })[0] || null;
+}
+function initPlan(){
+  var sel = document.getElementById("planSubject"), prev = sel.value, subs = mySubjects();
+  sel.innerHTML = subs.map(function(x){ return '<option>' + escapeHtml(x) + '</option>'; }).join("");
+  if(prev && subs.indexOf(prev) !== -1) sel.value = prev;
+  drawPlan();
+}
+document.getElementById("planSubject").onchange = drawPlan;
+async function drawPlan(){
+  var subj = document.getElementById("planSubject").value, list = document.getElementById("planList");
+  if(!subj){ list.innerHTML = '<div class="empty-day">Пока нет предметов в расписании.</div>'; return; }
+  list.innerHTML = '<div class="modal-sub">Загрузка...</div>';
+  await loadPlan(subj);
+  list.innerHTML = planItems.length ? "" : '<div class="modal-sub">План пуст. Добавьте задания ниже — по одному или сразу списком.</div>';
+  planItems.forEach(function(p, i){
+    var el = document.createElement("div");
+    el.className = "plan-item";
+    el.innerHTML = '<div class="no">' + (i + 1) + '</div><div class="tx">' + escapeHtml(p.description) + '</div><div class="ops"><button data-a="up">↑</button><button data-a="down">↓</button><button data-a="del" class="del">✕</button></div>';
+    el.querySelectorAll("button").forEach(function(b){
+      b.onclick = async function(){
+        var a = b.getAttribute("data-a");
+        if(a === "del"){ if(!window.confirm("Удалить пункт плана?")) return; await sb.from("course_plan").delete().eq("id", p.id); }
+        else {
+          var j = a === "up" ? i - 1 : i + 1;
+          if(j < 0 || j >= planItems.length) return;
+          var q = planItems[j];
+          await sb.from("course_plan").update({ position: q.position }).eq("id", p.id);
+          await sb.from("course_plan").update({ position: p.position }).eq("id", q.id);
+        }
+        drawPlan();
+      };
+    });
+    list.appendChild(el);
+  });
+  // progress per group
+  var groups = {}; lessonsCache.forEach(function(l){ if(l.subject === subj && l.groups) groups[l.group_id] = l.groups.name; });
+  var prog = Object.keys(groups).map(function(g){
+    var n = planIssued.filter(function(x){ return x.group_id === g; }).length;
+    return groups[g] + " гр. — " + n + "/" + planItems.length;
+  }).sort(function(a, b){ return a.localeCompare(b, "ru", { numeric: true }); });
+  document.getElementById("planProgress").textContent = planItems.length && prog.length ? "Выдано: " + prog.join(" · ") : "";
+}
+document.getElementById("planAdd").onclick = async function(){
+  var subj = document.getElementById("planSubject").value, raw = document.getElementById("planNew").value.trim();
+  if(!subj || !raw) return;
+  // Blank line separates tasks; if there are no blank lines, every line is its own task.
+  var parts = /\n\s*\n/.test(raw) ? raw.split(/\n\s*\n/) : raw.split(/\n/);
+  parts = parts.map(function(x){ return x.trim(); }).filter(Boolean);
+  var start = planItems.length ? planItems[planItems.length - 1].position + 1 : 1;
+  var rows = parts.map(function(d, i){ return { teacher_id: teacherProfile.id, subject: subj, position: start + i, description: d }; });
+  var res = await sb.from("course_plan").insert(rows);
+  if(res.error){ showToast("Не сохранилось: " + res.error.message); return; }
+  document.getElementById("planNew").value = "";
+  showToast("Добавлено в план: " + rows.length);
+  drawPlan();
+};
+// Suggestion inside the homework window
+var planSuggestion = null;
+async function suggestFromPlan(c){
+  var box = document.getElementById("planSugg");
+  box.style.display = "none"; planSuggestion = null;
+  await loadPlan(c.subject);
+  if(!planItems.length) return;
+  var item = nextPlanItem(c.rows[0].group_id);
+  if(!item){ return; }
+  planSuggestion = item;
+  box.innerHTML = '📋 <b>Следующее по плану (№' + (planItems.indexOf(item) + 1) + '):</b><br>' + escapeHtml(item.description.length > 160 ? item.description.slice(0, 160) + "…" : item.description) +
+    '<br><button class="btn" id="planUse">Вставить из плана</button>';
+  box.style.display = "block";
+  document.getElementById("planUse").onclick = function(){
+    document.getElementById("hwDesc").value = item.description;
+    if(Array.isArray(item.attachments)) item.attachments.forEach(function(a){ attachSaved.push(a); });
+    renderAttachList();
+    box.style.display = "none";
+  };
+}
+async function markPlanIssued(slotIds){
+  if(!planSuggestion) return;
+  var desc = document.getElementById("hwDesc").value.trim();
+  if(desc !== planSuggestion.description.trim()) return; // teacher wrote something else
+  var groups = {};
+  slotIds.forEach(function(id){ var l = lessonsCache.filter(function(x){ return x.id === id; })[0]; if(l) groups[l.group_id] = true; });
+  var rows = Object.keys(groups).map(function(g){ return { plan_id: planSuggestion.id, group_id: g }; });
+  if(rows.length) await sb.from("course_plan_issued").upsert(rows, { onConflict: "plan_id,group_id" });
+}
+
+/* ================= Banners on "День": issue week from plan + not handed in ================= */
+var bannersDrawn = false;
+async function renderBanners(){
+  var wrap = document.getElementById("dvBanners");
+  if(bannersDrawn) return; bannersDrawn = true;
+  wrap.innerHTML = "";
+  try{
+    // 1) Lessons in the next 7 days with no homework but with a plan
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var end = new Date(today); end.setDate(end.getDate() + 7);
+    var upcoming = lessonsInRange(today, end).filter(function(x){ var h = hwOf(x.row); return !(h && h.description && h.description.trim()); });
+    var bySubj = {};
+    upcoming.forEach(function(x){ (bySubj[x.row.subject] = bySubj[x.row.subject] || []).push(x); });
+    var plan = [];
+    for(var subj in bySubj){
+      await loadPlan(subj);
+      if(!planItems.length) continue;
+      var items = planItems.slice(), issued = planIssued.slice();
+      var seenG = {};
+      bySubj[subj].sort(function(a, b){ return a.date < b.date ? -1 : 1; }).forEach(function(x){
+        if(seenG[x.row.group_id]) return; // one per group per week
+        var done = {}; issued.forEach(function(i){ if(i.group_id === x.row.group_id) done[i.plan_id] = true; });
+        var it = items.filter(function(p){ return !done[p.id]; })[0];
+        if(!it) return;
+        seenG[x.row.group_id] = true;
+        plan.push({ row: x.row, item: it, date: x.date });
+      });
+    }
+    if(plan.length){
+      var b = document.createElement("div");
+      b.className = "banner";
+      b.innerHTML = '<b>📋 План на неделю</b><br>' + plan.length + ' пар(ы) без задания, в плане есть следующие пункты: ' +
+        plan.map(function(p){ return escapeHtml(p.row.groups.name) + " гр. (" + p.date.slice(8) + "." + p.date.slice(5, 7) + ")"; }).join(", ") +
+        '<button class="btn" id="planIssueAll">Выдать всё по плану</button>';
+      wrap.appendChild(b);
+      document.getElementById("planIssueAll").onclick = async function(){
+        this.disabled = true;
+        var rows = plan.map(function(p){ return { schedule_slot_id: p.row.id, description: p.item.description, attachments: p.item.attachments || [] }; });
+        var r1 = await sb.from("homework").upsert(rows, { onConflict: "schedule_slot_id" });
+        if(r1.error){ showToast("Не получилось: " + r1.error.message); this.disabled = false; return; }
+        await sb.from("course_plan_issued").upsert(plan.map(function(p){ return { plan_id: p.item.id, group_id: p.row.group_id }; }), { onConflict: "plan_id,group_id" });
+        showToast("Выдано заданий: " + rows.length);
+        bannersDrawn = false; await loadLessons(); renderAll();
+      };
+    }
+    // 2) Deadlines passed in the last 14 days - who hasn't handed in
+    var from = new Date(today); from.setDate(from.getDate() - 14);
+    var due = lessonsCache.map(function(l){ return { row: l, hw: hwOf(l) }; })
+      .filter(function(x){ return x.hw && x.hw.id && x.hw.due_date && x.hw.due_date >= isoDate(from) && x.hw.due_date <= isoDate(today); });
+    if(due.length){
+      var cnt = await sb.from("submissions").select("homework_id").in("homework_id", due.map(function(x){ return x.hw.id; }));
+      var by = {}; (cnt.data || []).forEach(function(s){ by[s.homework_id] = (by[s.homework_id] || 0) + 1; });
+      var lines = [];
+      for(var i = 0; i < due.length; i++){
+        var st = await groupStudents(due[i].row.group_id).catch(function(){ return []; });
+        var miss = st.length - (by[due[i].hw.id] || 0);
+        if(miss > 0) lines.push(escapeHtml(due[i].row.groups.name) + " гр. · " + escapeHtml(due[i].row.subject) + " — не сдали " + miss + " из " + st.length);
+      }
+      if(lines.length){
+        var b2 = document.createElement("div");
+        b2.className = "banner";
+        b2.innerHTML = '<b>📬 Срок прошёл, сдали не все</b><br>' + lines.join("<br>") + '<div class="modal-sub" style="margin:6px 0 0">Кто именно — во вкладке «Сдачи» у пары.</div>';
+        wrap.appendChild(b2);
+      }
+    }
+  }catch(e){ /* tables not installed yet - no banners */ }
+}
+
+/* ================= Lesson modal: tabs ================= */
+function showPane(id){
+  ["paneHw", "paneAtt", "paneSub"].forEach(function(p){ document.getElementById(p).style.display = p === id ? "block" : "none"; });
+  document.querySelectorAll(".mtab").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-pane") === id); });
+  if(id === "paneAtt") openAttendance();
+  if(id === "paneSub") loadSubmissions();
+}
+document.querySelectorAll(".mtab").forEach(function(b){ b.onclick = function(){ showPane(b.getAttribute("data-pane")); }; });
+document.querySelectorAll(".att-close").forEach(function(b){ b.onclick = function(){ document.getElementById("hwOverlay").classList.remove("active"); }; });
+
+function isoDate(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+var studentsCache = {};   // group_id -> [{roster_id, full_name, registered}]
+async function groupStudents(groupId){
+  if(studentsCache[groupId]) return studentsCache[groupId];
+  var r = await sb.rpc("teacher_group_students", { p_group_id: groupId });
+  if(r.error) throw new Error(r.error.message);
+  studentsCache[groupId] = r.data || [];
+  return studentsCache[groupId];
+}
+function hwOf(row){ return Array.isArray(row.homework) ? row.homework[0] : row.homework; }
+
+/* ================= Templates & "к следующей паре" ================= */
+function fillTemplates(c){
+  var sel = document.getElementById("hwTemplate");
+  var seen = {}, items = [];
+  lessonsCache.forEach(function(l){
+    if(normSubj(l.subject) !== normSubj(c.subject)) return;
+    var h = hwOf(l);
+    if(!h || !h.description || !h.description.trim()) return;
+    var key = h.description.trim();
+    if(seen[key]) return;
+    seen[key] = true;
+    items.push(h);
+  });
+  if(!items.length){ sel.style.display = "none"; return; }
+  sel.innerHTML = '<option value="">↺ Вставить из прошлых заданий…</option>' + items.map(function(h, i){
+    var t = h.description.replace(/\s+/g, " ").trim();
+    return '<option value="' + i + '">' + escapeHtml(t.length > 70 ? t.slice(0, 70) + "…" : t) + '</option>';
+  }).join("");
+  sel.style.display = "block";
+  sel.onchange = function(){
+    var h = items[+sel.value];
+    if(!h) return;
+    document.getElementById("hwDesc").value = h.description;
+    if(Array.isArray(h.attachments)){
+      h.attachments.forEach(function(a){ if(!attachSaved.some(function(x){ return x.url === a.url; })) attachSaved.push(a); });
+      renderAttachList();
+    }
+    sel.value = "";
+    showToast("Задание вставлено — проверьте и сохраните");
+  };
+}
+// Next lesson of the same subject for the same group, after this one.
+function nextLessonDate(row){
+  var g = row.groups && row.groups.name;
+  var base = absOf(row), span = 14 * 10, best = null, bestD = 1e9;
+  lessonsCache.forEach(function(l){
+    if(!(l.groups && l.groups.name === g) || normSubj(l.subject) !== normSubj(row.subject) || l.id === row.id) return;
+    var d = (absOf(l) - base + span) % span;
+    if(d > 0 && d < bestD){ bestD = d; best = l; }
+  });
+  if(!best) best = row; // only one lesson a cycle -> same lesson in 2 weeks
+  var bd = dateFor(row.week_number, row.day_index);
+  if(!bd) return null;
+  var diff = (weekDayToAbs(best.week_number, best.day_index) - weekDayToAbs(row.week_number, row.day_index) + 14) % 14;
+  if(diff === 0) diff = 14;
+  var d = new Date(bd); d.setDate(d.getDate() + diff);
+  return d;
+}
+document.getElementById("hwDueNext").onclick = function(){
+  if(!activeLessons.length) return;
+  var d = nextLessonDate(activeLessons[0]);
+  if(!d){ showToast("Не удалось определить дату"); return; }
+  document.getElementById("hwDue").value = isoDate(d);
+};
+
+/* ================= Attendance ================= */
+var attRow = null, attState = {}, attStudents = [];
+var ATT_LABELS = { present: "Был", absent: "Нет", late: "Опоздал", excused: "Уваж." };
+function openAttendance(){
+  var c = activeCard;
+  var chips = document.getElementById("attGroups");
+  chips.innerHTML = "";
+  c.rows.forEach(function(r, i){
+    var b = document.createElement("button");
+    b.className = "chip-btn" + (i === 0 ? " on" : "");
+    b.textContent = (r.groups && r.groups.name ? r.groups.name : "Группа") + " гр.";
+    b.onclick = function(){ chips.querySelectorAll(".chip-btn").forEach(function(x){ x.classList.remove("on"); }); b.classList.add("on"); loadAttendanceFor(r); };
+    chips.appendChild(b);
+  });
+  chips.style.display = c.rows.length > 1 ? "flex" : "none";
+  // Default date: this lesson's date in the current cycle; today if it's today.
+  var d = dateFor(c.rows[0].week_number, c.rows[0].day_index);
+  document.getElementById("attDate").value = d ? isoDate(d) : isoDate(new Date());
+  loadAttendanceFor(c.rows[0]);
+}
+document.getElementById("attDate").onchange = function(){ if(attRow) loadAttendanceFor(attRow); };
+async function loadAttendanceFor(row){
+  attRow = row;
+  var list = document.getElementById("attList");
+  list.innerHTML = '<div class="modal-sub">Загрузка...</div>';
+  try{
+    attStudents = await groupStudents(row.group_id);
+    var date = document.getElementById("attDate").value;
+    var r = await sb.from("attendance").select("roster_id,status").eq("schedule_slot_id", row.id).eq("lesson_date", date);
+    attState = {};
+    attStudents.forEach(function(s){ attState[s.roster_id] = "present"; });
+    (r.data || []).forEach(function(a){ attState[a.roster_id] = a.status; });
+    drawAttendance();
+  }catch(e){ list.innerHTML = '<div class="modal-sub">Не получилось загрузить список: ' + escapeHtml(e.message) + '</div>'; }
+}
+function drawAttendance(){
+  var list = document.getElementById("attList");
+  if(!attStudents.length){ list.innerHTML = '<div class="modal-sub">В этой группе пока нет студентов в списке.</div>'; updateAttSummary(); return; }
+  list.innerHTML = "";
+  attStudents.forEach(function(s){
+    var el = document.createElement("div");
+    el.className = "att-row";
+    el.innerHTML = '<div class="nm">' + escapeHtml(s.full_name) + (s.registered ? "" : '<small>ещё не в приложении</small>') + '</div><div class="att-st">' +
+      ["present", "absent", "late", "excused"].map(function(k){
+        return '<button data-s="' + k + '" class="' + (attState[s.roster_id] === k ? "on" : "") + '">' + ATT_LABELS[k] + '</button>';
+      }).join("") + '</div>';
+    el.querySelectorAll("button").forEach(function(b){
+      b.onclick = function(){
+        attState[s.roster_id] = b.getAttribute("data-s");
+        el.querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); });
+        updateAttSummary();
+      };
+    });
+    list.appendChild(el);
+  });
+  updateAttSummary();
+}
+function updateAttSummary(){
+  var n = attStudents.length, abs = 0;
+  attStudents.forEach(function(s){ if(attState[s.roster_id] === "absent") abs++; });
+  document.getElementById("attSummary").textContent = n ? "Присутствует " + (n - abs) + " из " + n : "";
+}
+document.getElementById("attAllBtn").onclick = function(){
+  attStudents.forEach(function(s){ attState[s.roster_id] = "present"; });
+  drawAttendance();
+};
+document.getElementById("attSaveBtn").onclick = async function(){
+  if(!attRow) return;
+  var btn = this, date = document.getElementById("attDate").value;
+  if(!date){ showToast("Укажите дату"); return; }
+  btn.disabled = true; btn.textContent = "Сохраняем...";
+  try{
+    var s1 = await sb.from("attendance_sessions").upsert({ schedule_slot_id: attRow.id, lesson_date: date }, { onConflict: "schedule_slot_id,lesson_date" });
+    if(s1.error) throw new Error(s1.error.message);
+    var d1 = await sb.from("attendance").delete().eq("schedule_slot_id", attRow.id).eq("lesson_date", date);
+    if(d1.error) throw new Error(d1.error.message);
+    var rows = attStudents.filter(function(s){ return attState[s.roster_id] !== "present"; })
+      .map(function(s){ return { schedule_slot_id: attRow.id, lesson_date: date, roster_id: s.roster_id, status: attState[s.roster_id] }; });
+    if(rows.length){
+      var i1 = await sb.from("attendance").insert(rows);
+      if(i1.error) throw new Error(i1.error.message);
+    }
+    showToast("Посещаемость сохранена");
+  }catch(e){ showToast("Не сохранилось: " + e.message); }
+  finally{ btn.disabled = false; btn.textContent = "Сохранить посещаемость"; }
+};
+
+/* ================= Submissions ================= */
+async function loadSubmissionsCount(c){
+  var el = document.getElementById("subCount");
+  el.textContent = "";
+  var ids = c.rows.map(hwOf).filter(function(h){ return h && h.id; }).map(function(h){ return h.id; });
+  if(!ids.length) return;
+  var r = await sb.from("submissions").select("id", { count: "exact", head: true }).in("homework_id", ids);
+  if(!r.error && r.count) el.textContent = "(" + r.count + ")";
+}
+async function loadSubmissions(){
+  var c = activeCard, list = document.getElementById("subList");
+  var hws = c.rows.map(function(r){ return { row: r, hw: hwOf(r) }; }).filter(function(x){ return x.hw && x.hw.id; });
+  if(!hws.length){ list.innerHTML = '<div class="missing">Сначала сохраните задание — тогда студенты смогут сдавать работы.</div>'; return; }
+  list.innerHTML = '<div class="modal-sub">Загрузка...</div>';
+  try{
+    var r = await sb.from("submissions").select("*").in("homework_id", hws.map(function(x){ return x.hw.id; })).order("submitted_at");
+    if(r.error) throw new Error(r.error.message);
+    var subs = r.data || [];
+    list.innerHTML = "";
+    for(var gi = 0; gi < hws.length; gi++){
+      var row = hws[gi].row, studs = await groupStudents(row.group_id);
+      var name = {}; studs.forEach(function(s){ name[s.roster_id] = s.full_name; });
+      var mine = subs.filter(function(s){ return s.homework_id === hws[gi].hw.id; });
+      var head = document.createElement("div");
+      head.className = "modal-sub";
+      head.style.margin = gi ? "16px 0 8px" : "0 0 8px";
+      head.textContent = (row.groups && row.groups.name ? row.groups.name + " гр. · " : "") + "сдали " + mine.length + " из " + studs.length;
+      list.appendChild(head);
+      mine.forEach(function(sb_){
+        var el = document.createElement("div");
+        el.className = "sub-item";
+        var dt = new Date(sb_.submitted_at);
+        el.innerHTML = '<div class="who">' + escapeHtml(name[sb_.roster_id] || "Студент") + '</div>' +
+          '<div class="when">' + dt.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + (sb_.checked_at ? " · проверено" : "") + '</div>' +
+          (sb_.comment ? '<div style="font-size:.82rem;margin-top:4px">' + escapeHtml(sb_.comment) + '</div>' : '') +
+          '<div class="files">' + (sb_.files || []).map(function(f){ return '<a href="' + escapeHtml(f.url) + '" target="_blank" rel="noopener">📎 ' + escapeHtml(f.name || "файл") + '</a>'; }).join("") + '</div>' +
+          '<div class="grade-row"><input class="sc" placeholder="Оценка" value="' + escapeHtml(sb_.score || "") + '"><input class="cm" placeholder="Комментарий" value="' + escapeHtml(sb_.teacher_comment || "") + '"><button class="btn">OK</button></div>';
+        el.querySelector("button").onclick = (function(id, e){ return async function(){
+          var up = await sb.from("submissions").update({ score: e.querySelector(".sc").value.trim() || null, teacher_comment: e.querySelector(".cm").value.trim() || null, checked_at: new Date().toISOString() }).eq("id", id);
+          showToast(up.error ? "Не сохранилось: " + up.error.message : "Оценка сохранена");
+        }; })(sb_.id, el);
+        list.appendChild(el);
+      });
+      var done = {}; mine.forEach(function(s){ done[s.roster_id] = true; });
+      var missing = studs.filter(function(s){ return !done[s.roster_id]; }).map(function(s){ return s.full_name; });
+      if(missing.length){
+        var m = document.createElement("div");
+        m.className = "missing";
+        m.innerHTML = "<b>Не сдали:</b> " + missing.map(escapeHtml).join(", ");
+        list.appendChild(m);
+      }
+    }
+  }catch(e){ list.innerHTML = '<div class="missing">Не получилось загрузить: ' + escapeHtml(e.message) + '</div>'; }
+}
+
+/* ================= Journal: grades + attendance per group & subject ================= */
+var jState = { group: null, subject: null, students: [], columns: [], grades: {}, sessions: [], absences: [] };
+function initJournal(){
+  var gs = myGroupsList(), gSel = document.getElementById("jGroup");
+  if(!gs.length){ document.getElementById("jTable").innerHTML = '<div class="empty-day">Пока нет групп в расписании.</div>'; return; }
+  var prev = gSel.value;
+  gSel.innerHTML = gs.map(function(g){ return '<option value="' + g.id + '">' + escapeHtml(g.name) + ' гр.</option>'; }).join("");
+  if(prev && gs.some(function(g){ return g.id === prev; })) gSel.value = prev;
+  fillJournalSubjects();
+}
+function fillJournalSubjects(){
+  var gid = document.getElementById("jGroup").value, set = {};
+  lessonsCache.forEach(function(l){ if(l.group_id === gid && l.subject) set[l.subject] = true; });
+  var sSel = document.getElementById("jSubject"), prev = sSel.value;
+  var subs = Object.keys(set).sort(function(a, b){ return a.localeCompare(b, "ru"); });
+  sSel.innerHTML = subs.map(function(x){ return '<option>' + escapeHtml(x) + '</option>'; }).join("");
+  if(prev && subs.indexOf(prev) !== -1) sSel.value = prev;
+  loadJournal();
+}
+document.getElementById("jGroup").onchange = fillJournalSubjects;
+document.getElementById("jSubject").onchange = loadJournal;
+async function loadJournal(){
+  var wrap = document.getElementById("jTable");
+  var gid = document.getElementById("jGroup").value, subj = document.getElementById("jSubject").value;
+  jState.group = gid; jState.subject = subj;
+  if(!gid || !subj){ wrap.innerHTML = ""; return; }
+  wrap.innerHTML = '<div class="empty-day">Загрузка...</div>';
+  try{
+    jState.students = await groupStudents(gid);
+    var cr = await sb.from("grade_columns").select("*").eq("group_id", gid).eq("subject", subj).eq("teacher_id", teacherProfile.id).order("position").order("created_at");
+    if(cr.error) throw new Error(cr.error.message);
+    jState.columns = cr.data || [];
+    jState.grades = {};
+    if(jState.columns.length){
+      var gr = await sb.from("grades").select("column_id,roster_id,score").in("column_id", jState.columns.map(function(c){ return c.id; }));
+      if(gr.error) throw new Error(gr.error.message);
+      (gr.data || []).forEach(function(g){ jState.grades[g.column_id + ":" + g.roster_id] = g.score || ""; });
+    }
+    var slotIds = lessonsCache.filter(function(l){ return l.group_id === gid && l.subject === subj; }).map(function(l){ return l.id; });
+    jState.sessions = []; jState.absences = [];
+    if(slotIds.length){
+      var ss = await sb.from("attendance_sessions").select("schedule_slot_id,lesson_date").in("schedule_slot_id", slotIds).order("lesson_date");
+      var aa = await sb.from("attendance").select("schedule_slot_id,lesson_date,roster_id,status").in("schedule_slot_id", slotIds);
+      jState.sessions = ss.data || []; jState.absences = aa.data || [];
+    }
+    drawJournal();
+  }catch(e){ wrap.innerHTML = '<div class="empty-day">Не получилось загрузить: ' + escapeHtml(e.message) + '</div>'; }
+}
+function absCount(rid){
+  var a = 0, ex = 0;
+  jState.absences.forEach(function(x){ if(x.roster_id === rid){ if(x.status === "absent") a++; else if(x.status === "excused") ex++; } });
+  return { a: a, ex: ex };
+}
+function drawJournal(){
+  var wrap = document.getElementById("jTable");
+  if(!jState.students.length){ wrap.innerHTML = '<div class="empty-day">В списке группы пока нет студентов.</div>'; return; }
+  var h = '<div class="jt"><table><thead><tr><th style="text-align:left">Студент</th><th>Пропуски<small>из ' + jState.sessions.length + ' пар</small></th>';
+  jState.columns.forEach(function(c){
+    h += '<th>' + escapeHtml(c.title) + (c.max_score != null ? '<small>из ' + c.max_score + '</small>' : '') + '<button class="del-col" data-id="' + c.id + '" title="Удалить колонку">✕</button></th>';
+  });
+  h += '</tr></thead><tbody>';
+  jState.students.forEach(function(s){
+    var ac = absCount(s.roster_id);
+    h += '<tr><td class="name">' + escapeHtml(s.full_name) + '</td><td style="text-align:center">' + (ac.a || "—") + (ac.ex ? ' <small style="color:var(--warn)">+' + ac.ex + ' уваж.</small>' : '') + '</td>';
+    jState.columns.forEach(function(c){
+      h += '<td style="text-align:center"><input data-c="' + c.id + '" data-r="' + s.roster_id + '" value="' + escapeHtml(jState.grades[c.id + ":" + s.roster_id] || "") + '"></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  if(!jState.columns.length) h += '<div class="modal-sub" style="margin-top:10px">Добавьте колонку оценок — например «Контрольная 1». Баллы сохраняются сразу.</div>';
+  wrap.innerHTML = h;
+  wrap.querySelectorAll("input[data-c]").forEach(function(inp){
+    inp.onchange = async function(){
+      var cid = inp.getAttribute("data-c"), rid = inp.getAttribute("data-r"), v = inp.value.trim();
+      var res = v ? await sb.from("grades").upsert({ column_id: cid, roster_id: rid, score: v, updated_at: new Date().toISOString() }, { onConflict: "column_id,roster_id" })
+                  : await sb.from("grades").delete().eq("column_id", cid).eq("roster_id", rid);
+      if(res.error){ showToast("Не сохранилось: " + res.error.message); return; }
+      jState.grades[cid + ":" + rid] = v;
+      inp.classList.add("saved"); setTimeout(function(){ inp.classList.remove("saved"); }, 900);
+    };
+    inp.onkeydown = function(e){
+      if(e.key !== "Enter") return;
+      var all = Array.prototype.slice.call(wrap.querySelectorAll('input[data-c="' + inp.getAttribute("data-c") + '"]'));
+      var nx = all[all.indexOf(inp) + 1]; if(nx) nx.focus(); else inp.blur();
+    };
+  });
+  wrap.querySelectorAll(".del-col").forEach(function(b){
+    b.onclick = async function(){
+      if(!window.confirm("Удалить колонку вместе с оценками?")) return;
+      var d = await sb.from("grade_columns").delete().eq("id", b.getAttribute("data-id"));
+      if(d.error){ showToast("Не удалилось: " + d.error.message); return; }
+      loadJournal();
+    };
+  });
+}
+document.getElementById("jAddCol").onclick = function(){
+  if(!jState.group || !jState.subject) return;
+  document.getElementById("colTitle").value = ""; document.getElementById("colMax").value = "";
+  document.getElementById("colOverlay").classList.add("active");
+};
+document.getElementById("colCancel").onclick = function(){ document.getElementById("colOverlay").classList.remove("active"); };
+document.getElementById("colSave").onclick = async function(){
+  var t = document.getElementById("colTitle").value.trim(), mx = document.getElementById("colMax").value;
+  if(!t){ showToast("Введите название"); return; }
+  var ins = await sb.from("grade_columns").insert({ teacher_id: teacherProfile.id, group_id: jState.group, subject: jState.subject, title: t, max_score: mx === "" ? null : +mx, position: jState.columns.length });
+  if(ins.error){ showToast("Не сохранилось: " + ins.error.message); return; }
+  document.getElementById("colOverlay").classList.remove("active");
+  loadJournal();
+};
+// Excel opens UTF-8 CSV with BOM and ";" separators correctly in Russian locale.
+function downloadCsv(name, rows){
+  var csv = "﻿" + rows.map(function(r){ return r.map(function(v){ v = String(v == null ? "" : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(";"); }).join("\r\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function jFileBase(){
+  var g = myGroupsList().filter(function(x){ return x.id === jState.group; })[0];
+  return (g ? g.name : "группа") + " " + jState.subject;
+}
+document.getElementById("jExportGrades").onclick = function(){
+  if(!jState.students.length) return;
+  var head = ["Студент", "Пропуски", "Уважительные"].concat(jState.columns.map(function(c){ return c.title + (c.max_score != null ? " (из " + c.max_score + ")" : ""); }));
+  var rows = [head].concat(jState.students.map(function(s){
+    var ac = absCount(s.roster_id);
+    return [s.full_name, ac.a, ac.ex].concat(jState.columns.map(function(c){ return jState.grades[c.id + ":" + s.roster_id] || ""; }));
+  }));
+  downloadCsv("Оценки " + jFileBase() + ".csv", rows);
+};
+document.getElementById("jExportAtt").onclick = function(){
+  if(!jState.students.length) return;
+  var sess = jState.sessions.slice().sort(function(a, b){ return a.lesson_date < b.lesson_date ? -1 : 1; });
+  var MARK = { absent: "н", late: "оп", excused: "ув" };
+  var head = ["Студент"].concat(sess.map(function(x){ var p = x.lesson_date.split("-"); return p[2] + "." + p[1]; })).concat(["Пропусков"]);
+  var rows = [head].concat(jState.students.map(function(s){
+    var cells = sess.map(function(x){
+      var a = jState.absences.filter(function(y){ return y.roster_id === s.roster_id && y.schedule_slot_id === x.schedule_slot_id && y.lesson_date === x.lesson_date; })[0];
+      return a ? MARK[a.status] : "";
+    });
+    return [s.full_name].concat(cells).concat([absCount(s.roster_id).a]);
+  }));
+  downloadCsv("Посещаемость " + jFileBase() + ".csv", rows);
+};
 
 /* ---------------- Literature (teacher publishes for chosen groups) ---------------- */
 function myGroupsList(){
@@ -972,5 +1914,6 @@ document.getElementById("litSaveBtn").onclick = async function(){
 
 loadTeacherProfile();
 </script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
 </body>
 </html>

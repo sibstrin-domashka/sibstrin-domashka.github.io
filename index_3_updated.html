@@ -244,6 +244,12 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .req{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface)}
 .req .nm{flex:1;font-size:.9rem;font-weight:600}
 .req .nm small{display:block;font-weight:400;color:var(--text-secondary);font-size:.72rem}
+.tag-chg{display:inline-block;font-size:.58rem;font-weight:800;border-radius:4px;padding:1px 4px;margin:0 3px 3px 0;background:var(--danger);color:#fff;letter-spacing:.02em}
+.tag-chg.sub{background:var(--warn);color:#051F20}
+.chg-line{font-size:.78rem;font-weight:700;margin-top:4px}
+.chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
+.chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
+.deadline-banner{max-width:700px;margin:0 auto 12px;padding:10px 14px;border-radius:14px;background:rgba(227,192,119,.14);border:1px solid rgba(227,192,119,.4);color:var(--text-primary);font-size:.86rem;line-height:1.5}
 .hw-files{margin:0 0 12px}
 .hw-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .hw-imgs img{width:92px;height:92px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
@@ -303,6 +309,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     <button class="btn-outline btn-sm" id="litBtn">📚 Литература</button>
     <button class="btn-outline btn-sm" id="sessionsBtn">🗓️ Расписание сессий</button>
     <button class="btn-outline btn-sm" id="teachersBtn">👨‍🏫 Преподаватели</button>
+    <button class="btn-outline btn-sm" id="gradesBtn" style="display:none">📊 Оценки</button>
     <button class="btn-outline btn-sm" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
   </div>
 </header>
@@ -739,6 +746,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   }
   function updateGroupButton(){
     var b=document.getElementById("groupBtn"), badge=document.getElementById("groupBadge");
+    document.getElementById("gradesBtn").style.display=myMembership?"":"none";
     if(!myMembership || !myMembership.join_code){ b.style.display="none"; return; }
     b.style.display="";
     var n=myMembership.pending_count||0;
@@ -863,6 +871,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 
       mergeOfficialSchedule(rowsToWeeksShape(slotsRes.data, teacherNameById));
       await syncHomework();
+      await loadLessonChanges();
+      await handleCheckin();
       render();
       if(showFeedback) toast("Расписание обновлено");
     }catch(e){
@@ -1037,6 +1047,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     }
 
     var day=data.weeks[activeWeek].days[showDay];
+    html+=deadlinesBanner();
     html+='<div class="dv-nav">';
     html+='<button id="dvPrev" class="dv-nav-btn"'+(dayViewAbsIndex<=0?' disabled':'')+'>‹</button>';
     html+='<div class="day-view-header"><div class="dv-day">'+day.name+'</div>';
@@ -1065,6 +1076,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
         if(part.hw||tn||(part.files&&part.files.length)) html+='<span class="tag-dz">ДЗ</span>';
         if(tn) html+='<span class="tag-t">'+tk+'/'+tn+'</span>';
         html+='<div class="dv-subj'+(has?'':' empty')+'">'+(part.subject?esc(part.subject):(myIsOwner?'Добавить пару':'—'))+'</div>';
+        var chg=changeFor(activeWeek,showDay,si,pi);
+        if(chg) html+='<div class="chg-line '+chg.kind+'">⚠ '+esc(changeText(chg))+(chg.note?' · '+esc(chg.note):'')+'</div>';
         var roomInfo=parseRoomType(part.room);
         var metaBits=[];
         if(roomInfo.number) metaBits.push(esc(roomInfo.number));
@@ -1141,6 +1154,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
               var sc=statusClass(part);
               var has=part.subject||part.hw||(part.topics&&part.topics.length);
               html+='<div class="subslot '+(has?"has ":"")+sc+(isActiveWeek&&isToday&&si===info.slot?' current-slot':'')+'" data-part="'+sp+'">';
+              var chgS=changeFor(wIdx,di,si,sp); if(chgS) html+=changeTag(chgS);
               if(part.hw||(part.files&&part.files.length)||(part.topics&&part.topics.length)) html+='<span class="tag-dz">ДЗ</span>';
               html+='<div class="s-subj">'+(part.subject?esc(part.subject):'<span style="color:var(--text-secondary)">—</span>')+'</div>';
               html+='<div class="s-meta">';
@@ -1156,6 +1170,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
             var tn=part.topics?part.topics.length:0;
             var tk=part.topics?part.topics.filter(function(x){return x.by;}).length:0;
             html+='<td class="slot '+(has?"has ":"")+sc+curClass+'" data-w="'+wIdx+'" data-d="'+di+'" data-t="'+si+'" data-part="0">';
+            var chg0=changeFor(wIdx,di,si,0); if(chg0) html+=changeTag(chg0);
             if(part.hw||tn||(part.files&&part.files.length)) html+='<span class="tag-dz">ДЗ</span>';
             if(tn) html+='<span class="tag-t">'+tk+'/'+tn+'</span>';
             html+='<div class="s-subj">'+(part.subject?esc(part.subject):'<span style="color:var(--text-secondary);font-weight:400">—</span>')+'</div>';
@@ -1654,6 +1669,8 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
            '<span>'+esc(part.teacher)+'</span></div></div>';
       }
       if(part.room) h+='<div class="info"><div class="l">Аудитория</div><div class="v">'+esc(part.room)+'</div></div>';
+      var chgM=changeFor(cur.w,cur.d,cur.t,activePart);
+      if(chgM) h+='<div class="info chg-info '+chgM.kind+'"><div class="l">Изменение</div><div class="v">⚠ '+esc(changeText(chgM))+(chgM.note?'<br><span style="font-weight:400">'+esc(chgM.note)+'</span>':'')+'</div></div>';
 
       if(canEditHomework){
         // Kept for the upcoming teacher role - not reachable right now since
@@ -1674,6 +1691,13 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
           h+='<div id="claimBox" class="claim-box" style="display:none"><input id="claimInp" placeholder="Номер темы или название" autocomplete="off"><button class="btn-blue btn-sm" id="claimGo">Забрать</button></div>';
           h+='<button class="btn-outline btn-sm" id="claimOpen" style="width:100%;margin-top:4px">✋ Забрать тему</button>';
           h+='</div>';
+          // Hand in the work (files + comment) - the teacher sees it and grades it.
+          h+='<div class="topics" id="subBox"><h4>Сдать работу</h4><div id="subStatus" style="font-size:.84rem;color:var(--text-secondary);margin-bottom:8px">Загрузка...</div>';
+          h+='<div id="subPicked" class="hw-files"></div>';
+          h+='<input type="file" id="subFiles" multiple style="display:none">';
+          h+='<button class="btn-outline btn-sm" id="subPick" style="width:100%;margin-bottom:8px">📎 Прикрепить файлы</button>';
+          h+='<input id="subComment" placeholder="Комментарий преподавателю (необязательно)" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font-size:.88rem;margin-bottom:8px">';
+          h+='<button class="btn-blue btn-sm" id="subSend" style="width:100%">Отправить преподавателю</button></div>';
         }
       }
       // done button
@@ -1685,6 +1709,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     document.getElementById("mBody").innerHTML=h;
     document.getElementById("ov1").classList.add("open");
     drawTopics(part);
+    if(document.getElementById("subBox")) initSubmission();
     var claimOpen=document.getElementById("claimOpen");
     if(claimOpen){
       claimOpen.onclick=function(){
@@ -1826,6 +1851,152 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
       }
     }
   }
+  // ---------- Lesson changes from teachers (отмена / замена / онлайн) ----------
+  var lessonChanges={}; // "slotId|YYYY-MM-DD" -> change
+  async function loadLessonChanges(){
+    lessonChanges={};
+    if(!sb) return;
+    var since=new Date(); since.setDate(since.getDate()-7);
+    var iso=since.getFullYear()+"-"+String(since.getMonth()+1).padStart(2,"0")+"-"+String(since.getDate()).padStart(2,"0");
+    var ids=Object.keys(slotIdByKey).map(function(k){ return slotIdByKey[k]; });
+    if(!ids.length) return;
+    var r=await sb.from("lesson_changes").select("schedule_slot_id,lesson_date,kind,substitute_name,note").in("schedule_slot_id",ids).gte("lesson_date",iso);
+    if(r.error) return;
+    (r.data||[]).forEach(function(x){ lessonChanges[x.schedule_slot_id+"|"+x.lesson_date]=x; });
+  }
+  function changeFor(w,d,t,p){
+    var sid=slotIdByKey[w+":"+d+":"+t+":"+p];
+    var day=data.weeks[w] && data.weeks[w].days[d];
+    if(!sid || !day || !day.date) return null;
+    var m=day.date.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if(!m) return null;
+    return lessonChanges[sid+"|"+m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")]||null;
+  }
+  var CHG={cancelled:"Пары не будет — вы свободны",substitute:"Замена",online:"Пара онлайн"};
+  function changeText(x){ return CHG[x.kind]+(x.kind==="substitute"&&x.substitute_name?": "+x.substitute_name:""); }
+  function changeTag(x){ return '<span class="tag-chg'+(x.kind==="cancelled"?"":" sub")+'">'+(x.kind==="cancelled"?"ОТМЕНА":x.kind==="online"?"ОНЛАЙН":"ЗАМЕНА")+'</span>'; }
+
+  // ---------- QR check-in (link from the teacher's QR code) ----------
+  (function(){
+    var q=new URLSearchParams(window.location.search).get("checkin");
+    if(q){ try{ sessionStorage.setItem("domashka_checkin", q); }catch(e){} history.replaceState(null,"",window.location.pathname); }
+  })();
+  async function handleCheckin(){
+    var q=null; try{ q=sessionStorage.getItem("domashka_checkin"); }catch(e){}
+    if(!q || !sb) return;
+    try{ sessionStorage.removeItem("domashka_checkin"); }catch(e){}
+    var m=q.match(/^([0-9a-f-]{36})\.(\d{4}-\d{2}-\d{2})\.([0-9a-f]{8})$/i);
+    if(!m){ toast("Неверный QR-код"); return; }
+    var r=await sb.rpc("qr_check_in",{p_slot:m[1],p_date:m[2],p_code:m[3]});
+    if(!r.error){ toast("✓ Ты отмечен на паре"); return; }
+    var e=r.error.message||"";
+    toast(e.indexOf("qr_expired")!==-1?"Код устарел — отсканируй ещё раз":
+          e.indexOf("qr_closed")!==-1?"Отметка на этой паре уже закрыта":
+          e.indexOf("not_your_group")!==-1?"Эта пара не твоей группы":"Не получилось отметиться: "+e);
+  }
+
+  // ---------- Deadline reminders on the day view ----------
+  function deadlinesBanner(){
+    if(myIsOwner) return "";
+    var items=[];
+    data.weeks.forEach(function(w){ w.days.forEach(function(d){ d.slots.forEach(function(sl){ sl.parts.forEach(function(p){
+      if(!(p.hw||(p.files&&p.files.length)) || !p.due) return;
+      if(user.name && p.done && p.done[user.name]) return;
+      var left=daysUntil(p.due);
+      if(left===null || left<0 || left>1) return;
+      var key=p.subject+"|"+p.due;
+      if(items.some(function(x){ return x.key===key; })) return;
+      items.push({key:key,subject:p.subject,left:left});
+    }); }); }); });
+    if(!items.length) return "";
+    return '<div class="deadline-banner">⏰ '+items.map(function(x){ return '<b>'+(x.left===0?"Сегодня":"Завтра")+'</b> сдать: '+esc(x.subject||"задание"); }).join("<br>⏰ ")+'</div>';
+  }
+
+  // ---------- Hand in work ----------
+  var subPicked=[];
+  async function initSubmission(){
+    subPicked=[];
+    var w0=cur.w,d0=cur.d,t0=cur.t,p0=activePart;
+    var key=w0+":"+d0+":"+t0+":"+p0, hid=homeworkIdByKey[key];
+    var st=document.getElementById("subStatus");
+    document.getElementById("subPick").onclick=function(){ document.getElementById("subFiles").click(); };
+    document.getElementById("subFiles").onchange=function(){
+      Array.prototype.forEach.call(this.files,function(f){
+        if(f.size>20*1024*1024){ toast("«"+f.name+"» больше 20 МБ"); return; }
+        subPicked.push(f);
+      });
+      this.value="";
+      document.getElementById("subPicked").innerHTML=subPicked.map(function(f){ return '<span class="hw-file" style="display:block">📎 '+esc(f.name)+'</span>'; }).join("");
+    };
+    document.getElementById("subSend").onclick=function(){ sendSubmission(hid); };
+    if(!hid || !sb){ st.textContent="Ещё не сдано."; return; }
+    var r=await sb.from("submissions").select("files,comment,submitted_at,score,teacher_comment,checked_at").eq("homework_id",hid).eq("student_id",myUserId).maybeSingle();
+    if(!document.getElementById("subStatus")) return;
+    if(r.error || !r.data){ st.textContent="Ещё не сдано."; return; }
+    var x=r.data, dt=new Date(x.submitted_at);
+    var h='<b style="color:var(--success)">✓ Сдано</b> '+dt.toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    if(x.score) h+='<div style="margin-top:4px">Оценка: <b>'+esc(x.score)+'</b></div>';
+    if(x.teacher_comment) h+='<div style="margin-top:2px">Преподаватель: '+esc(x.teacher_comment)+'</div>';
+    if(x.files && x.files.length) h+=filesHtml(x.files);
+    h+='<div style="margin-top:4px;font-size:.75rem">Можно пересдать — новая отправка заменит старую.</div>';
+    st.innerHTML=h;
+  }
+  async function sendSubmission(hid){
+    if(!sb || !myUserId){ toast("Сначала войди"); return; }
+    if(!hid){ toast("К этой паре задание ещё не добавлено"); return; }
+    if(!subPicked.length){ toast("Прикрепи хотя бы один файл"); return; }
+    var btn=document.getElementById("subSend"); btn.disabled=true;
+    try{
+      var files=[];
+      for(var i=0;i<subPicked.length;i++){
+        var f=subPicked[i];
+        btn.textContent="Загружаем "+(i+1)+" из "+subPicked.length+"...";
+        var ext=(f.name.match(/\.([A-Za-z0-9]{1,8})$/)||[])[1]||"";
+        var key="sub/"+myUserId+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+(ext?"."+ext.toLowerCase():"");
+        var up=await sb.storage.from("homework-files").upload(key,f,{contentType:f.type||"application/octet-stream"});
+        if(up.error) throw new Error("«"+f.name+"»: "+up.error.message);
+        files.push({name:f.name,url:sb.storage.from("homework-files").getPublicUrl(key).data.publicUrl,type:f.type||"",size:f.size,path:key});
+      }
+      var res=await sb.rpc("submit_work",{p_homework_id:hid,p_files:files,p_comment:document.getElementById("subComment").value});
+      if(res.error) throw new Error(res.error.message);
+      toast("Работа отправлена преподавателю");
+      initSubmission();
+    }catch(e){ toast("Не отправилось: "+e.message); }
+    finally{ btn.disabled=false; btn.textContent="Отправить преподавателю"; }
+  }
+
+  // ---------- My grades & attendance ----------
+  async function openMyGrades(){
+    document.getElementById("mTitle").textContent="📊 Мои оценки";
+    document.getElementById("mBody").innerHTML='<p style="color:var(--text-secondary)">Загрузка...</p>';
+    document.getElementById("ov1").classList.add("open");
+    var r=await sb.rpc("my_journal");
+    if(r.error){ document.getElementById("mBody").innerHTML='<p style="color:var(--danger)">Не удалось загрузить: '+esc(r.error.message)+'</p>'; return; }
+    var by={};
+    (r.data||[]).forEach(function(x){
+      var s=by[x.subject]=by[x.subject]||{grades:[],abs:0,ex:0,late:0};
+      if(x.kind==="grade") s.grades.push(x);
+      else if(x.status==="absent") s.abs++; else if(x.status==="excused") s.ex++; else if(x.status==="late") s.late++;
+    });
+    var subj=Object.keys(by).sort(function(a,b){ return a.localeCompare(b,"ru"); });
+    if(!subj.length){ document.getElementById("mBody").innerHTML='<p style="color:var(--text-secondary);line-height:1.5">Оценок и пропусков пока нет. Они появятся, когда преподаватели начнут вести журнал в «Домашке».</p>'; return; }
+    var h="";
+    subj.forEach(function(k){
+      var s=by[k];
+      h+='<div class="topics" style="margin-top:0;margin-bottom:12px"><h4>'+esc(k)+'</h4>';
+      s.grades.forEach(function(g){
+        h+='<div class="topic"><span class="tt">'+esc(g.title)+(g.comment?'<small style="display:block;color:var(--text-secondary);font-weight:400">'+esc(g.comment)+'</small>':'')+'</span><span class="tw" style="color:var(--text-primary);font-size:.9rem">'+esc(g.score||"—")+(g.max_score!=null?' <span style="color:var(--text-secondary);font-weight:400">/ '+g.max_score+'</span>':'')+'</span></div>';
+      });
+      var parts=[];
+      if(s.abs) parts.push("пропусков: "+s.abs);
+      if(s.ex) parts.push("по уважительной: "+s.ex);
+      if(s.late) parts.push("опозданий: "+s.late);
+      if(parts.length) h+='<p style="font-size:.8rem;color:var(--text-secondary);margin-top:4px">'+parts.join(" · ")+'</p>';
+      h+='</div>';
+    });
+    document.getElementById("mBody").innerHTML=h;
+  }
+
   // "Забрать тему": a student types a topic number ("3" -> "Тема 3") or a
   // title. Everyone in the group then sees who has it. One topic per
   // student per assignment - taking a new one gives up the old one.
@@ -2172,6 +2343,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 
   document.getElementById("syncBtn").onclick=function(){ syncFromSupabase(true); };
   document.getElementById("groupBtn").onclick=openGroupPanel;
+  document.getElementById("gradesBtn").onclick=openMyGrades;
   document.getElementById("cGroup").onclick=function(){ document.getElementById("ovGroup").classList.remove("open"); };
   document.getElementById("waitRefresh").onclick=function(){ myGroupId=null; syncFromSupabase(true); };
   document.getElementById("waitLogout").onclick=async function(){ if(sb) await sb.auth.signOut(); window.location.href="auth.html"; };
