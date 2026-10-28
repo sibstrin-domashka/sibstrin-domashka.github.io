@@ -295,6 +295,14 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .login-inner input{width:100%;max-width:220px;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:1rem;text-align:center;margin:11px 0 13px;background:var(--bg-elevated);color:var(--text-primary)}
 .err{color:var(--danger);font-size:.84rem;margin-top:8px;display:none}
 .in-tabbar{display:none !important}
+.hdr-gear{background:transparent;border:1px solid var(--border);border-radius:999px;width:36px;height:36px;padding:0;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;color:var(--text-primary)}
+header{flex-wrap:nowrap}
+.logo{white-space:nowrap;font-size:1.05rem;min-width:0}
+.user-chip{min-width:0;max-width:52vw}
+.user-chip #nameText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header .header-right{flex-wrap:nowrap}
+body.theme-owner header{flex-wrap:wrap}
+body.theme-owner header .header-right{flex-wrap:wrap}
 header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
 .toast{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 20px;border-radius:24px;font-weight:600;font-size:.85rem;z-index:300;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
@@ -327,14 +335,14 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     <button class="btn-outline btn-sm" id="importBtn" style="display:none">Импорт</button>
     <button class="btn-outline btn-sm" id="syncBtn" style="display:none">Обновить с сайта</button>
     <button class="btn-danger btn-sm" id="clearAllBtn" style="display:none">Очистить всё</button>
-    <button class="btn-outline btn-sm" id="viewToggleBtn">2 недели</button>
+    <button class="btn-outline btn-sm in-tabbar" id="viewToggleBtn">2 недели</button>
     <button class="btn-outline btn-sm in-tabbar" id="litBtn">📚 Литература</button>
     <button class="btn-outline btn-sm in-tabbar" id="sessionsBtn">🗓️ Расписание сессий</button>
     <button class="btn-outline btn-sm in-tabbar" id="teachersBtn">👨‍🏫 Преподаватели</button>
     <button class="btn-outline btn-sm in-tabbar" id="gradesBtn" style="display:none">📊 Оценки</button>
     <button class="btn-outline btn-sm in-tabbar" id="scanBtn">📷 QR</button>
     <button class="btn-outline btn-sm in-tabbar" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
-    <button class="btn-outline btn-sm in-tabbar" id="settingsBtn" aria-label="Настройки">⚙️ Настройки</button>
+    <button class="hdr-gear" id="settingsBtn" aria-label="Настройки" title="Настройки">⚙️</button>
   </div>
 </header>
 <div id="errBox"></div>
@@ -947,6 +955,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
 
   function render(){
     try{
+      if(window.DomashkaTabbar && !showingLit && !showingTeachers) DomashkaTabbar.setActive(viewMode==="day"?"home":"weeks");
       document.getElementById("gBadge").textContent=data.group||"Группа";
       document.body.classList.toggle("theme-owner", myIsOwner);
       document.getElementById("ownerBar").className="owner-bar"+(myIsOwner?" on":"");
@@ -2555,6 +2564,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
   function openMore(){
     if(!window.DomashkaSettings) return;
     var items=[
+      { icon:"📚", title:"Литература", sub:"Книги и пособия по предметам", onClick:function(){ if(showingTeachers) document.getElementById("teachersBtn").click(); if(!showingLit) document.getElementById("litBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } },
       { icon:"🗓️", title:"Расписание сессий", sub:"Зачёты и экзамены", onClick:openSessions },
       { icon:"👨‍🏫", title:"Преподаватели", onClick:function(){ if(showingLit) document.getElementById("litBtn").click(); if(!showingTeachers) document.getElementById("teachersBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } }
     ];
@@ -2574,12 +2584,12 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     DomashkaTabbar.setBadge("more", (myMembership&&myMembership.pending_count||0)+moreReplies+ownerOpen);
   }
   if(window.DomashkaTabbar) DomashkaTabbar.mount([
-    { key:"home", label:"Главная", icon:"home", onClick:function(){ closeSideScreens(); DomashkaTabbar.setActive("home"); window.scrollTo(0,0); } },
-    { key:"lit", label:"Литература", icon:"book", onClick:function(){ if(showingTeachers) document.getElementById("teachersBtn").click(); if(!showingLit) document.getElementById("litBtn").click(); DomashkaTabbar.setActive("lit"); window.scrollTo(0,0); } },
+    { key:"home", label:"День", icon:"calendar", onClick:function(){ closeSideScreens(); if(viewMode!=="day"){ viewMode="day"; dayViewAbsIndex=null; try{localStorage.setItem("domashka_view_v1",viewMode);}catch(e){} render(); } DomashkaTabbar.setActive("home"); window.scrollTo(0,0); } },
+    { key:"weeks", label:"2 недели", icon:"grid", onClick:function(){ closeSideScreens(); if(viewMode!=="grid"){ viewMode="grid"; try{localStorage.setItem("domashka_view_v1",viewMode);}catch(e){} render(); } DomashkaTabbar.setActive("weeks"); window.scrollTo(0,0); } },
     { key:"qr", label:"Отметиться", icon:"qr", center:true, onClick:function(){ document.getElementById("scanBtn").click(); } },
     { key:"grades", label:"Оценки", icon:"chart", onClick:function(){ if(!myMembership){ toast("Оценки появятся, когда тебя подтвердят в группе"); return; } openMyGrades(); } },
     { key:"more", label:"Ещё", icon:"more", onClick:openMore }
-  ], "home");
+  ], viewMode==="day"?"home":"weeks");
   document.getElementById("settingsBtn").onclick=function(){ if(window.DomashkaSettings) DomashkaSettings.open(); else toast("Не загрузились настройки — обнови страницу"); };
   document.getElementById("scanBtn").onclick=openScanner;
   document.getElementById("cScan").onclick=closeScanner;
