@@ -54,6 +54,8 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
 .copy-btn{margin-top:10px;padding:8px 14px;border:1.5px solid var(--blue);background:#fff;color:var(--blue-dark);border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer}
 .back-link{display:inline-block;margin-top:14px;font-size:.85rem;color:var(--gray);cursor:pointer;text-decoration:underline}
 .whoami{font-size:.88rem;color:var(--black);background:var(--blue-light);padding:8px 12px;border-radius:8px;margin-bottom:4px}
+.invite-note{background:rgba(79,209,165,.12);color:var(--success,#4FD1A5);border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:6px;line-height:1.4}
+.pending-note{background:rgba(224,177,60,.12);color:#E0B13C;border-radius:10px;padding:10px 12px;font-size:.84rem;margin:8px 0 4px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -63,17 +65,19 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
   <div class="sub">Расписание и домашка твоей группы</div>
 
   <div id="joinScreen" class="screen active">
+    <div class="invite-note" id="inviteNote" style="display:none"></div>
     <label>Группа</label>
     <select id="groupSelect"><option value="">Загрузка...</option></select>
     <label>Фамилия Имя Отчество</label>
     <input type="text" id="fullName" placeholder="Иванов Иван Иванович">
-    <div class="hint">Мы проверим тебя по списку группы — вводи так же, как в журнале.</div>
+    <div class="hint">Вводи так же, как в журнале. Если тебя ещё нет в списке группы, одногруппники подтвердят твою заявку.</div>
     <button class="btn" id="findBtn">Далее</button>
     <div class="msg" id="msg"></div>
   </div>
 
   <div id="passScreen" class="screen">
     <div class="whoami" id="whoamiBox"></div>
+    <div class="pending-note" id="pendingNote" style="display:none">Тебя пока нет в списке группы — после регистрации заявку подтвердит кто-то из одногруппников. До этого расписание и домашка будут скрыты.</div>
     <div id="signupFields">
       <label>Придумай пароль</label>
       <input type="password" id="pass1" placeholder="Минимум 6 символов" autocomplete="new-password">
@@ -128,6 +132,9 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
   }
 
   var refFromLink = getRefFromUrl();
+  // ?g=CODE - invitation link to one group (works for any group, listed or not)
+  var inviteCode = (new URLSearchParams(window.location.search).get("g") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  var pendingStatus = "approved";
   var pendingGroupId = null, pendingName = null, pendingEmail = null, pendingIsClaimed = null;
 
   async function loadGroups(){
@@ -143,6 +150,23 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
     sel.innerHTML = res.data.map(function(g){ return '<option value="'+g.id+'">'+g.name+'</option>'; }).join("");
   }
 
+  async function applyInvite(){
+    if(!inviteCode) return;
+    var r = await sb.from("groups").select("id,name").eq("join_code", inviteCode).maybeSingle();
+    if(r.error || !r.data) return;
+    var sel = document.getElementById("groupSelect");
+    var opt = Array.prototype.find.call(sel.options, function(o){ return o.value === r.data.id; });
+    if(!opt){
+      opt = document.createElement("option"); opt.value = r.data.id; opt.textContent = r.data.name;
+      if(!sel.options.length || !sel.options[0].value) sel.innerHTML = "";
+      sel.appendChild(opt);
+    }
+    sel.value = r.data.id;
+    var note = document.getElementById("inviteNote");
+    note.textContent = "Тебя пригласили в группу " + r.data.name;
+    note.style.display = "block";
+  }
+
   document.getElementById("findBtn").onclick = async function(){
     clearMsg();
     var groupId = document.getElementById("groupSelect").value;
@@ -153,8 +177,18 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
     var btn = document.getElementById("findBtn");
     btn.disabled = true; btn.textContent = "Проверяем...";
     try{
-      var res = await sb.rpc("roster_login_email", { p_group_id: groupId, p_full_name: name });
-      if(res.error){ showMsg("Ошибка: " + res.error.message); return; }
+      var res = await sb.rpc("request_join", { p_group_id: groupId, p_full_name: name });
+      if(res.error && /request_join/.test(res.error.message || "") && /function|find/i.test(res.error.message || "")){
+        res = await sb.rpc("roster_login_email", { p_group_id: groupId, p_full_name: name }); // старая база
+      }
+      if(res.error){
+        var em = res.error.message || "";
+        if(em.indexOf("rejected") !== -1) showMsg("Заявку с этим именем отклонили. Если это ошибка — напиши старосте.");
+        else if(em.indexOf("too_many_requests") !== -1) showMsg("В группе слишком много неподтверждённых заявок. Попроси одногруппников разобрать их.");
+        else if(em.indexOf("need_full_name") !== -1) showMsg("Введи полное ФИО, как в журнале");
+        else showMsg("Ошибка: " + em);
+        return;
+      }
       var row = res.data && res.data[0];
       if(!row){
         showMsg("Не нашли тебя в списке этой группы. Проверь имя (как в журнале) и группу, или обратись к старосте.");
@@ -162,6 +196,8 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
       }
       pendingGroupId = groupId; pendingName = name;
       pendingEmail = row.email; pendingIsClaimed = row.is_claimed;
+      pendingStatus = row.status || "approved";
+      document.getElementById("pendingNote").style.display = (pendingStatus === "pending" && !pendingIsClaimed) ? "block" : "none";
 
       document.getElementById("whoamiBox").textContent = name;
       document.getElementById("signupFields").style.display = pendingIsClaimed ? "none" : "block";
@@ -235,7 +271,8 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
       }
 
       var groupRow = await sb.from("groups").select("name").eq("id", pendingGroupId).maybeSingle();
-      document.getElementById("doneGroup").textContent = groupRow.data ? groupRow.data.name : "";
+      document.getElementById("doneGroup").textContent = (groupRow.data ? groupRow.data.name : "") +
+        (pendingStatus === "pending" ? " — заявка отправлена, ждём подтверждения одногруппников" : "");
 
       var link = window.location.origin + window.location.pathname + "?ref=" + session.user.id;
       document.getElementById("refLink").textContent = link;
@@ -266,6 +303,7 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
   // If this device already has a session and a profile, skip straight to the app.
   (async function(){
     await loadGroups();
+    await applyInvite();
     var sess = await sb.auth.getSession();
     var session = sess.data.session;
     if(session){

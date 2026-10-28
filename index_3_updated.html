@@ -234,6 +234,16 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .info{background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:9px}
 .info .l{font-size:.66rem;color:var(--gray);font-weight:600;text-transform:uppercase}
 .info .v{font-size:.94rem;font-weight:600}
+.badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--today,#E08A3C);color:#051F20;font-size:.7rem;font-weight:800;margin-left:4px}
+.wait-screen{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,31,32,.92);backdrop-filter:blur(8px)}
+.wait-card{max-width:380px;width:100%;background:var(--surface-solid);border:1px solid var(--border);border-radius:18px;padding:26px 20px;text-align:center}
+.wait-card h3{font-family:var(--font-display);margin:8px 0 8px;font-size:1.15rem}
+.wait-card p{color:var(--text-secondary);font-size:.9rem;line-height:1.5;margin-bottom:16px}
+.wait-card .btn-blue{width:100%}
+.grp-link{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:.82rem;word-break:break-all;margin:8px 0}
+.req{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface)}
+.req .nm{flex:1;font-size:.9rem;font-weight:600}
+.req .nm small{display:block;font-weight:400;color:var(--text-secondary);font-size:.72rem}
 .hw-files{margin:0 0 12px}
 .hw-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .hw-imgs img{width:92px;height:92px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
@@ -293,6 +303,7 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
     <button class="btn-outline btn-sm" id="litBtn">📚 Литература</button>
     <button class="btn-outline btn-sm" id="sessionsBtn">🗓️ Расписание сессий</button>
     <button class="btn-outline btn-sm" id="teachersBtn">👨‍🏫 Преподаватели</button>
+    <button class="btn-outline btn-sm" id="groupBtn" style="display:none">👥 Группа <span class="badge" id="groupBadge" style="display:none"></span></button>
   </div>
 </header>
 <div id="errBox"></div>
@@ -309,6 +320,23 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   <div class="mod">
     <div class="mod-h"><h3 id="mTitle">Пара</h3><button class="mod-x" id="c1">×</button></div>
     <div class="mod-b" id="mBody"></div>
+  </div>
+</div>
+<!-- Group: invite link + join requests -->
+<div class="ov" id="ovGroup">
+  <div class="mod" style="max-width:440px">
+    <div class="mod-h"><h3 id="grpTitle">Группа</h3><button class="mod-x" id="cGroup">×</button></div>
+    <div class="mod-b" id="grpBody"></div>
+  </div>
+</div>
+<!-- Waiting for approval -->
+<div id="waitScreen" class="wait-screen" style="display:none">
+  <div class="wait-card">
+    <div style="font-size:2.2rem">⏳</div>
+    <h3 id="waitTitle">Заявка отправлена</h3>
+    <p id="waitText">Как только кто-то из одногруппников подтвердит тебя, откроются расписание и домашка.</p>
+    <button class="btn-blue" id="waitRefresh">Проверить ещё раз</button>
+    <button class="btn-outline btn-sm" id="waitLogout" style="margin-top:10px">Выйти</button>
   </div>
 </div>
 <!-- Login -->
@@ -694,6 +722,81 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
   }
 
 
+  // ---------- Group membership: waiting screen, invite link, join requests ----------
+  var myMembership=null;
+  function showWaitScreen(m){
+    var ws=document.getElementById("waitScreen");
+    if(m.status==="rejected"){
+      document.getElementById("waitTitle").textContent="Заявку отклонили";
+      document.getElementById("waitText").textContent="Одногруппники не подтвердили заявку в группу "+(m.group_name||"")+". Если это ошибка — напиши старосте.";
+      document.getElementById("waitRefresh").style.display="none";
+    } else {
+      document.getElementById("waitTitle").textContent="Заявка в группу "+(m.group_name||"")+" отправлена";
+      document.getElementById("waitText").textContent="Как только кто-то из одногруппников подтвердит тебя, откроются расписание, домашка и темы.";
+      document.getElementById("waitRefresh").style.display="";
+    }
+    ws.style.display="flex";
+  }
+  function updateGroupButton(){
+    var b=document.getElementById("groupBtn"), badge=document.getElementById("groupBadge");
+    if(!myMembership || !myMembership.join_code){ b.style.display="none"; return; }
+    b.style.display="";
+    var n=myMembership.pending_count||0;
+    badge.textContent=n; badge.style.display=n?"inline-block":"none";
+  }
+  function inviteLink(){
+    var base=window.location.href.replace(/[^\/]*([?#].*)?$/,"");
+    return base+"auth.html?g="+encodeURIComponent(myMembership.join_code);
+  }
+  async function openGroupPanel(){
+    if(!myMembership) return;
+    document.getElementById("grpTitle").textContent="Группа "+(myMembership.group_name||"");
+    var body=document.getElementById("grpBody");
+    var link=inviteLink();
+    var h='<h4 style="font-size:.9rem;margin-bottom:4px">Пригласить одногруппников</h4>'+
+      '<p style="color:var(--text-secondary);font-size:.82rem;line-height:1.4">Отправь ссылку в беседу группы. Новеньких нужно будет подтвердить ниже.</p>'+
+      '<div class="grp-link" id="grpLink">'+esc(link)+'</div>'+
+      '<button class="btn-blue btn-sm" id="grpCopy" style="width:100%">Скопировать ссылку</button>'+
+      '<h4 style="font-size:.9rem;margin:18px 0 8px">Ждут подтверждения</h4><div id="reqList"><p style="color:var(--text-secondary);font-size:.85rem">Загрузка...</p></div>'+
+      '<p style="color:var(--text-secondary);font-size:.75rem;margin-top:10px;line-height:1.4">Подтверждай только тех, кого точно знаешь по группе: подтверждённые видят домашку и могут забирать темы.</p>';
+    body.innerHTML=h;
+    document.getElementById("ovGroup").classList.add("open");
+    document.getElementById("grpCopy").onclick=function(){
+      var btn=this;
+      (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(function(){ btn.textContent="Скопировано!"; setTimeout(function(){ btn.textContent="Скопировать ссылку"; },1500); })
+        .catch(function(){ toast("Скопируй ссылку вручную"); });
+    };
+    await drawRequests();
+  }
+  async function drawRequests(){
+    var list=document.getElementById("reqList");
+    if(!list) return;
+    var r=await sb.rpc("list_join_requests");
+    if(r.error){ list.innerHTML='<p style="color:var(--danger)">Не удалось загрузить: '+esc(r.error.message)+'</p>'; return; }
+    var rows=r.data||[];
+    myMembership.pending_count=rows.length; updateGroupButton();
+    if(!rows.length){ list.innerHTML='<p style="color:var(--text-secondary);font-size:.85rem">Заявок нет.</p>'; return; }
+    list.innerHTML=rows.map(function(x){
+      return '<div class="req"><div class="nm">'+esc(x.full_name)+'<small>'+(x.has_account?'зарегистрировался':'ещё не завершил регистрацию')+'</small></div>'+
+        '<button class="btn-blue btn-sm" data-id="'+x.id+'" data-ok="1">✓</button>'+
+        '<button class="btn-danger btn-sm" data-id="'+x.id+'" data-ok="0">✕</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(list.querySelectorAll("button[data-id]"), function(b){
+      b.onclick=async function(){
+        var ok=b.getAttribute("data-ok")==="1";
+        var name=b.parentNode.querySelector(".nm").firstChild.textContent;
+        var go=async function(){
+          b.disabled=true;
+          var res=await sb.rpc("decide_join_request",{p_roster_id:b.getAttribute("data-id"), p_approve:ok});
+          if(res.error){ toast("Ошибка: "+res.error.message); b.disabled=false; return; }
+          toast(ok?"Подтверждено: "+name:"Заявка отклонена");
+          drawRequests();
+        };
+        if(ok) go(); else showConfirm("Отклонить заявку «"+name+"»?", go);
+      };
+    });
+  }
+
   async function syncFromSupabase(showFeedback){
     if(!sb){ if(showFeedback) toast("Supabase не подключен"); return; }
     try{
@@ -723,6 +826,16 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
           toast("Профиль ещё не привязан к группе");
           return;
         }
+        // Joined by request and not approved yet -> waiting screen, no data.
+        var mem=await sb.rpc("my_membership");
+        var m0=(!mem.error && mem.data && mem.data[0]) || null;
+        if(m0 && m0.status!=="approved"){
+          showWaitScreen(m0);
+          return;
+        }
+        document.getElementById("waitScreen").style.display="none";
+        myMembership=m0;
+        updateGroupButton();
         myGroupId=prof.data.group_id;
         myIsOwner=!!prof.data.is_owner;
         if(!user.name && prof.data.full_name){ user.name=prof.data.full_name; }
@@ -2046,6 +2159,10 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 
 
   document.getElementById("syncBtn").onclick=function(){ syncFromSupabase(true); };
+  document.getElementById("groupBtn").onclick=openGroupPanel;
+  document.getElementById("cGroup").onclick=function(){ document.getElementById("ovGroup").classList.remove("open"); };
+  document.getElementById("waitRefresh").onclick=function(){ myGroupId=null; syncFromSupabase(true); };
+  document.getElementById("waitLogout").onclick=async function(){ if(sb) await sb.auth.signOut(); window.location.href="auth.html"; };
   document.getElementById("viewToggleBtn").onclick=function(){
     var goingToDay=(viewMode!=="day");
     viewMode=goingToDay?"day":"grid";
