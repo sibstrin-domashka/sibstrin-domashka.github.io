@@ -16,6 +16,8 @@ jobs:
       SUPABASE_URL: "https://wsrrqwvemfliwzsqlkvg.supabase.co"
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RUCAPTCHA_KEY: ${{ secrets.RUCAPTCHA_KEY }}
+      # Не больше 6 платных капч в день на все шаги вместе.
+      MAX_CAPTCHAS_PER_DAY: "6"
 
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +48,8 @@ jobs:
         continue-on-error: true
         env:
           LECTURER_APP_MODE: "1"
+          # Преподавателей обновляем по понедельникам и четвергам (ручной запуск — всегда).
+          TEACHERS_DAYS: "1,4"
           SKIP_GROUPS: "128,124"
         run: node scripts/scrape-lecturers.js
 

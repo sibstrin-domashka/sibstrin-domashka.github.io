@@ -1,12 +1,10 @@
 name: Update lecturer schedules
 
 on:
-  schedule:
-    # 03:00 UTC every Monday = ~10:00 Novosibirsk time. Runs weekly, not
-    # daily, since Tim asked for this one to update less often than the
-    # per-group scraper.
-    - cron: "0 3 * * 1"
-  workflow_dispatch: {} # lets you run it manually from the Actions tab
+  # Отключено по расписанию: это старый сбор ВСЕХ преподавателей подряд,
+  # он тратил больше всего капч. Нужные преподаватели обновляются в
+  # update-schedule.yml. Запустить вручную можно из вкладки Actions.
+  workflow_dispatch: {}
 
 jobs:
   scrape-lecturers:
