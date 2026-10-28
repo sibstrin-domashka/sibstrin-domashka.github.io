@@ -338,6 +338,31 @@ async function run() {
   }
 
 
+  // Режим «собрать список всех групп» (1 страница = максимум 1 капча):
+  // группы появятся в списке на странице входа, а их расписание соберём,
+  // только когда в группу зайдёт первый студент.
+  if (process.env.COLLECT_GROUP_LIST === "1") {
+    var allGroups = await page.evaluate(function () {
+      var best = [];
+      Array.prototype.slice.call(document.querySelectorAll("select")).forEach(function (sel) {
+        var o = Array.prototype.slice.call(sel.options).map(function (x) { return x.textContent.trim(); })
+          .filter(function (t) { return /^\d{2,4}[а-яё]?$/i.test(t); });
+        if (o.length > best.length) best = o;
+      });
+      return best;
+    });
+    console.log("Групп в списке на сайте: " + allGroups.length);
+    for (var gi = 0; gi < allGroups.length; gi += 200) {
+      await sbFetch("/rest/v1/groups?on_conflict=name", {
+        method: "POST",
+        headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(allGroups.slice(gi, gi + 200).map(function (n) { return { name: n, listed: true }; }))
+      });
+    }
+    await browser.close();
+    return;
+  }
+
   console.log("Selecting group '" + GROUP_NAME + "' in the form...");
   var formOk = await selectGroupAndSubmit(GROUP_NAME);
   if (!formOk) {

@@ -344,8 +344,8 @@ async function run() {
   var newCodes = GROUPS_MODE ? [] : await ensureRosterRows(lecturerNames);
   if (newCodes.length) {
     console.log("\n" + newCodes.length + " NEW lecturers were added to teacher_roster with a fresh code each:");
-    newCodes.forEach(function (r) { console.log("  " + r.full_name + " -> " + r.access_code); });
-    console.log("(Tim: query 'select full_name, access_code from teacher_roster' any time to see everyone's code and email it out.)\n");
+    newCodes.forEach(function (r) { console.log("  " + r.full_name + " -> " + r.code); });
+    console.log("(Tim: query 'select full_name, code from teacher_roster' any time to see everyone's code and email it out.)\n");
   } else if (!GROUPS_MODE) {
     console.log("No new lecturers - teacher_roster already has everyone.");
   }
@@ -417,8 +417,16 @@ async function run() {
   }
 
   if (GROUPS_MODE) {
-    var roster = await sbFetch("/rest/v1/teacher_roster?select=full_name");
-    var wanted = (roster || []).map(function (r) { return r.full_name; });
+    // Только нужные преподаватели: из TEACHER_NAMES (очередь / план) или,
+    // если не задано, только те, кто уже вошёл в приложение.
+    var wanted;
+    if (process.env.TEACHER_NAMES) {
+      wanted = process.env.TEACHER_NAMES.split("|").map(function (x) { return x.trim(); }).filter(Boolean);
+    } else {
+      var roster = await sbFetch("/rest/v1/teacher_roster?select=full_name&claimed_by=not.is.null");
+      wanted = (roster || []).map(function (r) { return r.full_name; });
+    }
+    if (!wanted.length) { console.log("Нет преподавателей для обновления."); await browser.close(); return; }
     console.log("App teachers (teacher_roster): " + wanted.join("; "));
     console.log("Groups left to the group scraper: " + SKIP_GROUPS.join(", "));
     var anyOk = false;
@@ -514,9 +522,9 @@ async function ensureRosterRows(names) {
     await sbFetch("/rest/v1/teacher_roster", {
       method: "POST",
       headers: { "Prefer": "return=minimal" },
-      body: JSON.stringify({ full_name: names[i], access_code: code })
+      body: JSON.stringify({ full_name: names[i], code: code })
     });
-    created.push({ full_name: names[i], access_code: code });
+    created.push({ full_name: names[i], code: code });
   }
   return created;
 }
