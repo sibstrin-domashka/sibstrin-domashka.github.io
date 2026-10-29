@@ -139,6 +139,7 @@
     "📋":'<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h6M9 19h3"/>',
     "🤒":'<path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/>',
     "🌐":'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    "💳":'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
     "🚩":'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>'
   };
   function ic(e){ var p = ICON_SVG[e]; return p ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>' : (e || ""); }
@@ -188,6 +189,7 @@
     h += "</div></div>";
 
     if(isStudent){
+      h += '<div class="ds-sec"><h4>Подписка</h4><div class="ds-list">' + row({ id:"dsSub0", icon:"💳", title:"Подписка группы", sub:"Статус и оплата" }) + "</div></div>";
       h += '<div class="ds-sec"><h4>Уведомления</h4><div class="ds-list">';
       h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">⏰</span><span class="ds-t">Напоминать о сроках сдачи<small>Плашка «сдать сегодня / завтра» на главном экране</small></span>' + sw("dsRem", remindersOn()) + "</div>";
       h += "</div></div>";
@@ -225,6 +227,7 @@
     if($("dsLang")) $("dsLang").onchange = function(){ DomashkaI18n.set(this.value); };
     $("dsText").onchange = function(){ lsSet("domashka_text", this.value); applyTextSize(); };
     if($("dsRem")) $("dsRem").onchange = function(){ lsSet("domashka_reminders", this.checked ? "1" : "0"); if(opts.onRemindersChange) opts.onRemindersChange(this.checked); };
+    if($("dsSub0")) $("dsSub0").onclick = function(){ subscription(); };
     $("dsExport").onclick = exportData;
     if($("dsUnblock")) $("dsUnblock").onclick = openBlocked;
     $("dsCache").onclick = clearCache;
@@ -554,6 +557,33 @@
     }catch(e){ return 0; }
   }
 
+  /* ---------------- Подписка ---------------- */
+  function fmtD(iso){ var d = new Date(iso); return String(d.getDate()).padStart(2,"0") + "." + String(d.getMonth()+1).padStart(2,"0") + "." + d.getFullYear(); }
+  var REASON = { group_paid:"Оплачено группой", paid:"Оплаченная подписка", trial:"Пробный период", group_trial:"Пробный месяц группы", free:"Бесплатный доступ (приглашения или промокод)", teacher:"Для преподавателей — бесплатно", owner:"Владелец" };
+  async function subscription(){
+    var ov = sheet("dsSub", "Подписка группы", '<p class="ds-p">Загрузка...</p>');
+    var body = ov.querySelector(".ds-body");
+    var a = await opts.sb.rpc("my_access");
+    var st = (!a.error && a.data && a.data[0]) || null;
+    var h = "";
+    if(!st){ h += '<p class="ds-p">Не удалось узнать статус' + (a.error ? ": " + esc(a.error.message) : "") + "</p>"; }
+    else if(st.reason === "teacher" || st.reason === "owner"){ h += '<div class="ds-rep"><b>' + esc(REASON[st.reason]) + "</b></div>"; }
+    else {
+      var forever = st.access_until && new Date(st.access_until).getFullYear() > 2090;
+      h += '<div class="ds-rep" style="border-color:' + (st.has_access ? "var(--accent,#4FD1A5)" : "var(--danger,#E8605C)") + '">' +
+        '<div class="ds-meta">Группа ' + esc(st.group_name || "") + "</div>" +
+        (st.has_access ? "<b>Доступ открыт " + (forever ? "навсегда" : "до " + fmtD(st.access_until)) + '</b><div class="ds-meta">' + esc(REASON[st.reason] || "") + "</div>"
+                       : "<b>Доступ не оплачен</b><div class=\"ds-meta\">" + (st.access_until ? "Закончился " + fmtD(st.access_until) : "Подписка ещё не оформлена") + "</div>") +
+        (st.group_paid_until && st.reason !== "group_paid" && new Date(st.group_paid_until) > new Date() ? '<div class="ds-meta">Оплачено до ' + fmtD(st.group_paid_until) + "</div>" : "") + "</div>";
+      h += '<p class="ds-p">Подписка оформляется сразу на всю группу: один человек оплачивает — доступ открывается у всех.</p>';
+      if(!window.DOMASHKA_NATIVE_IOS && st.group_id){
+        h += '<a class="ds-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box" href="pay.html?g=' + encodeURIComponent(st.group_id) + '" target="_blank" rel="noopener">' + (st.has_access ? "Продлить для группы" : "Оплатить для группы") + "</a>";
+        h += '<p class="ds-p" style="font-size:.8rem">Там же можно ввести промокод.</p>';
+      }
+    }
+    body.innerHTML = h;
+  }
+
   /* ---------------- Меню «Ещё» ---------------- */
   function menu(title, list){
     var h = '<div class="ds-sec" style="margin-top:10px"><div class="ds-list">';
@@ -569,6 +599,7 @@
   window.DomashkaSettings = {
     init: function(o){ opts = o; injectCss(); },
     menu: menu,
+    subscription: subscription,
     unreadReplies: unreadReplies,
     open: open,
     report: report,

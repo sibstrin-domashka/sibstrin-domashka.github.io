@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Подписка — Домашка</title>
+<meta name="theme-color" content="#061A19">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
+<style>
+:root{--bg:#061A19;--card:#0B2724;--card2:#10332F;--text:#EEF7F3;--sub:#A8C7BC;--accent:#5BD0A8;--accent2:#47B892;--on:#04211C;--border:rgba(170,225,205,.16);--danger:#EC7A74}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(ellipse at top,rgba(91,208,168,.12),transparent 60%),var(--bg);color:var(--text);min-height:100vh;padding:28px 16px 48px;line-height:1.5}
+.wrap{max-width:880px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem;text-decoration:none;color:var(--text)}
+.brand i{width:36px;height:36px;border-radius:9px;background:var(--accent);color:var(--on);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800}
+h1{font-size:clamp(1.6rem,4vw,2.2rem);line-height:1.2;margin:28px 0 8px;letter-spacing:-.01em}
+.lead{color:var(--sub);font-size:1rem;max-width:620px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:26px}
+.plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;position:relative;transition:border-color .15s,transform .1s}
+.plan:hover{border-color:rgba(91,208,168,.45)}
+.plan.on{border:2px solid var(--accent);padding:19px}
+.plan .t{font-weight:700;font-size:1.05rem}
+.plan .p{font-size:2rem;font-weight:700;margin-top:8px;letter-spacing:-.02em}
+.plan .p small{font-size:.9rem;color:var(--sub);font-weight:500}
+.plan .d{color:var(--sub);font-size:.88rem;margin-top:4px}
+.plan .badge{position:absolute;top:-10px;right:14px;background:var(--accent);color:var(--on);font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-top:18px}
+label{display:block;font-size:.85rem;color:var(--sub);margin-bottom:6px;font-weight:500}
+input[type=email]{width:100%;min-height:46px;padding:11px 13px;border-radius:10px;border:1px solid rgba(170,225,205,.3);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:1rem}
+input[type=email]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,208,168,.2)}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:.88rem;color:var(--sub);cursor:pointer}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0}
+a{color:#9FE3BE}
+.btn{display:block;width:100%;margin-top:16px;min-height:50px;border:none;border-radius:12px;background:var(--accent);color:var(--on);font:inherit;font-weight:700;font-size:1.02rem;cursor:pointer}
+.btn:hover{background:var(--accent2)}.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.msg{margin-top:12px;font-size:.9rem;min-height:1.2em}.msg.err{color:var(--danger)}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:24px}
+.feat div{font-size:.9rem;color:var(--sub);padding-left:22px;position:relative}
+.feat div:before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:700}
+.key{font-family:"Courier New",monospace;font-size:clamp(1.1rem,5.2vw,2rem);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow-x:auto;text-align:center;background:var(--card2);border:1px dashed var(--accent);border-radius:12px;padding:16px;margin:14px 0;word-break:break-all}
+.center{text-align:center}
+.foot{margin-top:34px;color:var(--sub);font-size:.78rem;text-align:center;line-height:1.7}
+.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;margin:18px auto;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand" href="index_3_updated.html"><i>Д</i>Домашка</a>
+
+  <!-- ======== Выбор тарифа ======== -->
+  <div id="buyView">
+    <h1>Подписка «Домашки»</h1>
+    <p class="lead">Одна оплата — доступ для <b>всей группы</b>: расписание, домашние задания, темы докладов, оценки и напоминания. Скиньтесь всей группой — так выходит копейки с человека.</p>
+    <div class="box">
+      <label for="grp">Группа, за которую платите</label>
+      <input id="grpSearch" type="search" placeholder="Номер группы, например 128" autocomplete="off" style="width:100%;min-height:46px;padding:11px 13px;border-radius:10px;border:1px solid rgba(170,225,205,.3);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:1rem">
+      <select id="grp" size="1" style="width:100%;min-height:46px;margin-top:8px;padding:10px;border-radius:10px;border:1px solid rgba(170,225,205,.3);background:var(--card2);color:var(--text);font:inherit;font-size:1rem"><option value="">Загрузка…</option></select>
+      <div class="msg" id="grpStatus" style="color:var(--sub)"></div>
+    </div>
+    <div class="plans" id="plans"><div class="plan"><div class="spin"></div></div></div>
+    <div class="feat">
+      <div>Расписание группы и замены пар</div><div>Домашка, файлы и сдача работ</div>
+      <div>Оценки и посещаемость</div><div>Напоминания о сроках</div>
+    </div>
+    <div class="box">
+      <div id="perHead" class="lead" style="margin:0 0 12px;font-size:.9rem"></div>
+      <label for="email">Почта — для чека и связи по заказу</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      <label class="check"><input type="checkbox" id="agree"><span>Я принимаю условия <a href="offer.html" target="_blank" rel="noopener">публичной оферты</a> и <a href="privacy.html" target="_blank" rel="noopener">политики конфиденциальности</a></span></label>
+      <button class="btn" id="payBtn" disabled>Выберите тариф</button>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div class="box" id="promoBox" style="display:none">
+      <label for="promo">Есть промокод?</label>
+      <div style="display:flex;gap:8px"><input id="promo" type="text" placeholder="Промокод" autocomplete="off" style="flex:1;min-height:46px;padding:11px 13px;border-radius:10px;border:1px solid rgba(170,225,205,.3);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:1rem;text-transform:uppercase">
+      <button class="btn ghost" id="promoBtn" style="width:auto;margin:0;padding:0 18px">Применить</button></div>
+      <div class="msg" id="promoMsg"></div>
+    </div>
+  </div>
+
+  <!-- ======== После оплаты ======== -->
+  <div id="doneView" style="display:none">
+    <h1 id="doneTitle">Проверяем оплату…</h1>
+    <div class="box center" id="doneBox"><div class="spin"></div><p class="lead" style="margin:0 auto">Обычно это занимает несколько секунд.</p></div>
+  </div>
+
+  <div class="foot">
+    <span id="seller"></span><br>
+    <a href="offer.html">Оферта</a> · <a href="privacy.html">Конфиденциальность</a> · <a href="support.html">Поддержка</a><br>
+    «Домашка» — независимый студенческий проект, не официальный сервис НГАСУ.
+  </div>
+</div>
+
+<script>
+(function(){
+  var SUPABASE_URL = "https://wsrrqwvemfliwzsqlkvg.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzcnJxd3ZlbWZsaXd6c3Fsa3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMDc1NDYsImV4cCI6MjEwNDc4MzU0Nn0.mcnzJ6Fh5eTCJSYXQ6rMkBHAbL5JPIC1UId1DlRfuDY";
+  var FN = SUPABASE_URL + "/functions/v1/payments";
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var CFG = window.DOMASHKA_CONFIG || {};
+  var plans = [], chosen = null, groups = [], session = null, myGroup = null;
+  var qs = new URLSearchParams(location.search);
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function money(v){ return Number(v).toLocaleString("ru-RU", { maximumFractionDigits:2 }) + " ₽"; }
+  $("seller").textContent = (CFG.operatorName || "") + (CFG.sellerInn ? " · ИНН " + CFG.sellerInn : "") + (CFG.supportEmail ? " · " + CFG.supportEmail : "");
+
+  async function api(body){
+    var r = await fetch(FN, { method:"POST", headers:{ "Content-Type":"application/json", "apikey":SUPABASE_ANON_KEY, "Authorization":"Bearer " + SUPABASE_ANON_KEY }, body:JSON.stringify(body) });
+    var j = {}; try{ j = await r.json(); }catch(e){}
+    if(!r.ok) throw new Error(j.error || ("Ошибка " + r.status));
+    return j;
+  }
+
+  // ---------- группа ----------
+  function fmtD(iso){ var d = new Date(iso); return String(d.getDate()).padStart(2,"0") + "." + String(d.getMonth()+1).padStart(2,"0") + "." + d.getFullYear(); }
+  function drawGroups(filter){
+    var sel = $("grp"), cur = sel.value || (myGroup && myGroup.group_id) || qs.get("g") || "";
+    var list = groups.filter(function(g){ return !filter || g.name.toLowerCase().indexOf(filter.toLowerCase()) === 0; });
+    sel.innerHTML = '<option value="">— выберите группу —</option>' + list.map(function(g){ return '<option value="' + g.id + '"' + (g.id === cur ? " selected" : "") + ">" + esc(g.name) + "</option>"; }).join("");
+    if(list.length === 1){ sel.value = list[0].id; }
+    groupChanged();
+  }
+  async function loadGroups(){
+    var r = await sb.from("groups").select("id,name").eq("listed", true).order("name");
+    if(r.error) r = await sb.from("groups").select("id,name").order("name");
+    groups = r.data || [];
+    var s0 = await sb.auth.getSession(); session = s0.data && s0.data.session;
+    if(session){
+      var m = await sb.rpc("my_membership");
+      myGroup = (!m.error && m.data && m.data[0]) || null;
+      if(myGroup){ $("promoBox").style.display = "block"; if(!groups.some(function(g){ return g.id === myGroup.group_id; })) groups.unshift({ id:myGroup.group_id, name:myGroup.group_name }); }
+    }
+    drawGroups("");
+  }
+  $("grpSearch").oninput = function(){ drawGroups(this.value.trim()); };
+  $("grp").onchange = groupChanged;
+  async function groupChanged(){
+    var id = $("grp").value, st = $("grpStatus");
+    st.textContent = "";
+    if(!id){ return; }
+    var r = await sb.rpc("group_access_status", { p_group:id });
+    var g = (!r.error && r.data && r.data[0]) || null;
+    if(!g) return;
+    var act = g.access_until && new Date(g.access_until) > new Date();
+    st.textContent = act ? "Сейчас у группы " + g.group_name + " доступ до " + fmtD(g.access_until) + ". Оплата продлит его." : "У группы " + g.group_name + " доступ не оплачен.";
+  }
+  $("promoBtn").onclick = async function(){
+    var m = $("promoMsg"); m.className = "msg err";
+    var code = $("promo").value.trim();
+    if(code.length < 4){ m.textContent = "Введите промокод"; return; }
+    this.disabled = true;
+    var r = await sb.rpc("redeem_promo", { p_code:code });
+    this.disabled = false;
+    var x = (!r.error && r.data && r.data[0]) || null;
+    if(!x || !x.ok){
+      var e = (r.error && r.error.message) || (x && x.error) || "";
+      m.textContent = /too_many/.test(e) ? "Слишком много попыток — попробуйте через час" : /already_used/.test(e) ? "Этот промокод уже применён для вашей группы" : "Такого промокода нет";
+      return;
+    }
+    m.className = "msg"; m.style.color = "var(--accent)";
+    m.textContent = "Готово! У группы " + x.group_name + " бесплатный доступ " + (new Date(x.free_until).getFullYear() > 2090 ? "навсегда" : "до " + fmtD(x.free_until)) + ".";
+    groupChanged();
+  };
+
+  // ---------- тарифы ----------
+  async function loadPlans(){
+    var r = await sb.from("plans").select("code,title,days,price").eq("active", true).order("sort");
+    plans = (r.data || []).filter(function(p){ return p.price; });
+    var box = $("plans");
+    if(!plans.length){ box.innerHTML = '<div class="plan" style="cursor:default"><div class="t">Скоро</div><div class="d">Продажа подписки ещё не открыта.</div></div>'; return; }
+    var month = plans.filter(function(p){ return p.code === "month"; })[0];
+    box.innerHTML = plans.map(function(p){
+      var per = p.code === "month" ? "в месяц" : p.code === "semester" ? "за семестр" : "за год";
+      var save = month && p.code !== "month" ? Math.round((1 - p.price / (month.price * p.days / 30)) * 100) : 0;
+      return '<div class="plan" data-code="' + p.code + '" tabindex="0" role="button">' +
+        (p.code === "semester" ? '<div class="badge">Популярный</div>' : "") +
+        '<div class="t">' + esc(p.title) + '</div><div class="p">' + money(p.price) + ' <small>' + per + '</small></div>' +
+        '<div class="d">' + (save > 0 ? "Выгода " + save + "% по сравнению с помесячной" : p.code === "month" ? "Можно продлевать в любой момент" : "") + "</div></div>";
+    }).join("");
+    box.querySelectorAll(".plan").forEach(function(el){
+      var pick = function(){ box.querySelectorAll(".plan").forEach(function(x){ x.classList.remove("on"); }); el.classList.add("on");
+        chosen = plans.filter(function(p){ return p.code === el.getAttribute("data-code"); })[0];
+        $("payBtn").disabled = false; $("payBtn").textContent = "Оплатить " + money(chosen.price);
+        $("perHead").textContent = "Если скинуться группой из 25 человек — около " + Math.ceil(chosen.price / 25) + " ₽ с человека."; };
+      el.onclick = pick; el.onkeydown = function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); pick(); } };
+    });
+    var pre = box.querySelector('[data-code="semester"]') || box.querySelector(".plan");
+    if(pre) pre.click();
+  }
+
+  $("payBtn").onclick = async function(){
+    var m = $("msg"); m.className = "msg err"; m.textContent = "";
+    var email = $("email").value.trim();
+    var gid = $("grp").value;
+    if(!gid){ m.textContent = "Выберите группу"; return; }
+    if(!chosen){ m.textContent = "Выберите тариф"; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ m.textContent = "Укажите почту"; return; }
+    if(!$("agree").checked){ m.textContent = "Нужно согласиться с условиями оферты"; return; }
+    var b = this; b.disabled = true; b.textContent = "Переходим к оплате…";
+    try{
+      var r = await api({ action:"create", plan:chosen.code, email:email, group_id:gid });
+      try{ localStorage.setItem("domashka_last_order", JSON.stringify({ order:r.order, token:r.token })); }catch(e){}
+      location.href = r.pay_url;
+    }catch(e){ m.textContent = e.message; b.disabled = false; b.textContent = "Оплатить " + money(chosen.price); }
+  };
+
+  // ---------- после оплаты ----------
+  async function checkOrder(order, token, failed){
+    $("buyView").style.display = "none"; $("doneView").style.display = "block";
+    var tries = 0;
+    async function tick(){
+      tries++;
+      try{
+        var r = await api({ action:"check", order:order, token:token });
+        if(r.status === "paid" && r.paid_until){ showDone(r); return; }
+      }catch(e){ if(tries > 2){ fail(e.message); return; } }
+      if(failed && tries >= 2){ fail("Оплата не прошла или была отменена. Деньги не списаны."); return; }
+      if(tries < 40) setTimeout(tick, 3000);
+      else fail("Не видим оплату. Если деньги списались — напишите нам, приложите номер заказа: " + order);
+    }
+    tick();
+  }
+  function showDone(r){
+    $("doneTitle").textContent = "Оплата прошла — спасибо!";
+    $("doneBox").innerHTML = '<div style="font-size:3rem">🎉</div>' +
+      '<p class="lead" style="margin:6px auto 0;font-size:1.05rem">Группа <b>' + esc(r.group || "") + '</b>: доступ открыт до <b>' + fmtD(r.paid_until) + '</b> (тариф «' + esc(r.plan || "") + '»).</p>' +
+      '<p class="lead" style="margin:10px auto 0;font-size:.9rem">Всем в группе ничего вводить не нужно — приложение откроется само.</p>' +
+      '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="index_3_updated.html">Открыть приложение</a>';
+  }
+  function fail(t){
+    $("doneTitle").textContent = "Что-то пошло не так";
+    $("doneBox").innerHTML = '<p class="lead" style="margin:0 auto">' + esc(t) + '</p><a class="btn ghost" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="pay.html">Вернуться к тарифам</a>';
+  }
+
+  if(qs.get("order") && qs.get("t")) checkOrder(qs.get("order"), qs.get("t"), qs.get("fail") === "1");
+  else { loadGroups(); loadPlans(); }
+})();
+</script>
+</body>
+</html>

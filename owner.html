@@ -166,6 +166,30 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   <div class="section-title">👨‍🏫 Заявки преподавателей</div>
   <div id="treqList"><div class="loading">Загрузка...</div></div>
 
+  <div class="section-title">💳 Тарифы и оплата</div>
+  <p class="hint-owner">Укажи цену и включи тариф — он появится на странице оплаты <a href="pay.html" target="_blank">pay.html</a>. Пустая цена = тариф не продаётся.</p>
+  <div id="planList"><div class="loading">Загрузка...</div></div>
+  <button class="btn-add" id="planSave" style="margin-top:8px">Сохранить тарифы</button>
+  <div class="hint-owner" id="planMsg" style="margin-top:6px"></div>
+  <p class="hint-owner" style="margin-top:14px"><b>Промокоды</b> — бесплатный доступ группе. Вводятся только на сайте оплаты (так разрешает Apple). Код — минимум 8 символов, чтобы его нельзя было подобрать.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input id="promoCode" placeholder="Например TIM-FREE-2026" style="flex:2;min-width:150px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;text-transform:uppercase">
+    <select id="promoDays" style="flex:1;min-width:110px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit"><option value="30">на месяц</option><option value="150">на семестр</option><option value="365">на год</option><option value="">навсегда</option></select>
+    <input id="promoUses" type="number" min="1" placeholder="сколько групп" style="width:120px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit">
+    <button class="btn-mini" id="promoMake">Создать</button>
+  </div>
+  <div id="promoOut" class="hint-owner" style="margin-top:8px"></div>
+  <div id="promoList"></div>
+  <p class="hint-owner" style="margin-top:14px"><b>Открыть доступ группе вручную</b> — например, демо-группе для проверки в App Store и Google Play.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input id="grantGroup" placeholder="Номер группы" style="flex:1;min-width:110px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit">
+    <select id="grantDays" style="flex:1;min-width:110px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit"><option value="30">на месяц</option><option value="150">на семестр</option><option value="365">на год</option><option value="">навсегда</option></select>
+    <button class="btn-mini" id="grantGo">Открыть</button>
+  </div>
+  <div id="grantOut" class="hint-owner" style="margin-top:8px"></div>
+  <p class="hint-owner" style="margin-top:14px"><b>Последние заказы</b></p>
+  <div id="orderList"><div class="loading">Загрузка...</div></div>
+
   <div class="section-title">🎁 Приглашения в «Домашку»</div>
   <div id="refList"><div class="loading">Загрузка...</div></div>
 
@@ -326,6 +350,64 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     }
     await loadTeacherRequests();
     await loadReferrals();
+    await loadPlansOwner();
+    await loadOrders();
+    await loadPromos();
+  }
+  var ownerPlans=[];
+  async function loadPlansOwner(){
+    var el=document.getElementById("planList");
+    var r=await sb.from("plans").select("*").order("sort");
+    if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 23_payments.sql ('+esc(r.error.message)+')</div>'; return; }
+    ownerPlans=r.data||[];
+    el.innerHTML=ownerPlans.map(function(p){
+      return '<div class="lit-row"><div><div class="lname">'+esc(p.title)+'</div><div class="lsub">'+(p.code==="semester"?"до конца семестра":p.days+" дней")+'</div></div>'+
+        '<div style="display:flex;gap:8px;align-items:center"><input type="number" min="1" step="1" placeholder="₽" data-price="'+p.code+'" value="'+(p.price!=null?Number(p.price):"")+'" style="width:90px;padding:8px;border-radius:10px;border:1px solid var(--border);font-family:inherit">'+
+        '<label style="display:flex;gap:4px;align-items:center;font-size:.8rem"><input type="checkbox" data-active="'+p.code+'"'+(p.active?" checked":"")+'>продаётся</label></div></div>';
+    }).join("");
+  }
+  document.getElementById("planSave").onclick=async function(){
+    var msg=document.getElementById("planMsg"); msg.textContent="";
+    for(var i=0;i<ownerPlans.length;i++){
+      var c=ownerPlans[i].code, pr=document.querySelector('[data-price="'+c+'"]').value, act=document.querySelector('[data-active="'+c+'"]').checked;
+      var price=pr?Number(pr):null;
+      if(act && !price){ msg.textContent="У тарифа «"+ownerPlans[i].title+"» нет цены — его нельзя включить."; return; }
+      var u=await sb.from("plans").update({ price:price, active:act }).eq("code", c);
+      if(u.error){ msg.textContent="Ошибка: "+u.error.message; return; }
+    }
+    msg.textContent="Сохранено ✓"; loadPlansOwner();
+  };
+  async function loadPromos(){
+    var r=await sb.from("promo_codes").select("*").order("created_at",{ascending:false}).limit(30);
+    var el=document.getElementById("promoList");
+    if(r.error){ el.innerHTML=""; return; }
+    el.innerHTML=(r.data||[]).map(function(x){
+      return '<div class="lit-row"><div><div class="lname" style="font-family:monospace">'+esc(x.code)+'</div><div class="lsub">'+(x.days?x.days+" дней":"навсегда")+' · использовано '+x.uses+(x.max_uses?" из "+x.max_uses:"")+(x.note?' · '+esc(x.note):'')+'</div></div></div>';
+    }).join("");
+  }
+  document.getElementById("promoMake").onclick=async function(){
+    var out=document.getElementById("promoOut"), d=document.getElementById("promoDays").value, u=document.getElementById("promoUses").value;
+    var r=await sb.rpc("owner_create_promo",{ p_code:document.getElementById("promoCode").value, p_days:d?Number(d):null, p_max_uses:u?Number(u):null, p_note:null });
+    if(r.error){ out.textContent=/too_short/.test(r.error.message)?"Код слишком короткий — нужно минимум 8 символов":/duplicate|unique/.test(r.error.message)?"Такой код уже есть":"Ошибка: "+r.error.message; return; }
+    out.textContent="Создан промокод "+r.data+" ✓"; document.getElementById("promoCode").value=""; loadPromos();
+  };
+  document.getElementById("grantGo").onclick=async function(){
+    var out=document.getElementById("grantOut"), d=document.getElementById("grantDays").value;
+    var r=await sb.rpc("owner_grant_group",{ p_group_name:document.getElementById("grantGroup").value, p_days:d?Number(d):null });
+    if(r.error){ out.textContent=/no_such_group/.test(r.error.message)?"Нет такой группы":"Ошибка: "+r.error.message; return; }
+    out.textContent="Готово: доступ открыт "+(new Date(r.data).getFullYear()>2090?"навсегда":"до "+fmtDate(r.data))+" ✓";
+  };
+  async function loadOrders(){
+    var el=document.getElementById("orderList");
+    var r=await sb.from("orders").select("created_at,plan_code,amount,email,status,paid_until,groups(name)").order("created_at",{ascending:false}).limit(20);
+    if(r.error){ el.innerHTML='<div class="error-msg">'+esc(r.error.message)+'</div>'; return; }
+    var rows=r.data||[];
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Заказов пока нет.</p>'; return; }
+    var paid=rows.filter(function(x){ return x.status==="paid"; }), sum=paid.reduce(function(a,x){ return a+Number(x.amount); },0);
+    el.innerHTML='<p class="hint-owner">Оплачено (из последних 20): '+paid.length+' на '+sum.toLocaleString("ru-RU")+' ₽</p>'+rows.map(function(x){
+      return '<div class="lit-row"><div><div class="lname">'+esc(x.plan_code)+' · '+Number(x.amount).toLocaleString("ru-RU")+' ₽ · '+(x.status==="paid"?"✅ оплачен":x.status==="failed"?"❌ не оплачен":"⏳ ожидает")+'</div>'+
+        '<div class="lsub">группа '+esc((x.groups&&x.groups.name)||"—")+' · '+esc(x.email||"")+' · '+fmtDate(x.created_at)+(x.paid_until?' · до '+fmtDate(x.paid_until):'')+'</div></div></div>';
+    }).join("");
   }
   async function loadReferrals(){
     var el=document.getElementById("refList");

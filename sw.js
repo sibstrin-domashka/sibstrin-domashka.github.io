@@ -2,10 +2,10 @@
 // Always tries the network first so students and teachers get fresh pages;
 // falls back to the last saved copy when offline. Supabase and other
 // cross-origin requests are never touched.
-const CACHE = "domashka-v8";
+const CACHE = "domashka-v10";
 const CORE = ["index_3_updated.html", "auth.html", "teacher.html", "teacher-app.html",
               "manifest.json", "manifest-teacher.json", "icon-192.png", "icon-512.png",
-              "app-config.js", "themes.js", "settings.js", "privacy.html", "terms.html", "support.html", "legal.css", "legal.js", "tabbar.js", "design.css", "i18n.js"];
+              "app-config.js", "themes.js", "settings.js", "privacy.html", "terms.html", "support.html", "legal.css", "legal.js", "tabbar.js", "design.css", "i18n.js", "pay.html", "offer.html"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE).catch(() => {})).then(() => self.skipWaiting()));
