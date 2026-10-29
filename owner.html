@@ -386,7 +386,8 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   document.getElementById("codesBtn").onclick=async function(){
     var r=await sb.rpc("owner_teacher_codes");
     if(r.error){ alertBox("Нужно запустить 20_scrape_queue_and_teacher_requests.sql ("+r.error.message+")"); return; }
-    var rows=[["ФИО","Код","Уже вошёл","Почта","Статус"]].concat((r.data||[]).filter(function(x){ return x.email; }).map(function(x){ return [x.full_name,x.code,x.registered?"да":"нет",x.email||"",""]; }));
+    var greet=function(f){ var p=String(f).trim().split(/\s+/); return p.length>=3&&p[2].length>2 ? p[1]+" "+p[2] : (p[1]||p[0]); };
+    var rows=[["ФИО","Код","Уже вошёл","Почта","Статус","Обращение"]].concat((r.data||[]).filter(function(x){ return x.email; }).map(function(x){ return [x.full_name,x.code,x.registered?"да":"нет",x.email||"","",greet(x.full_name)]; }));
     if(rows.length===1){ alertBox("Пока ни у кого нет почты — сначала шаг 1."); return; }
     var csv="﻿"+rows.map(function(row){ return row.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(","); }).join("\r\n");
     var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="domashka-teacher-codes.csv"; a.click();
