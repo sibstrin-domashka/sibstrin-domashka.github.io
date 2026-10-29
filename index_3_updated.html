@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="app-config.js"></script>
 <script src="themes.js"></script>
+<script src="i18n.js"></script>
 <script src="settings.js"></script>
 <script src="tabbar.js"></script>
 <style>
@@ -2093,14 +2094,14 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
   function fmtShortDate(iso){ var d=new Date(iso); return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear(); }
   function referralCardHtml(){
     if(!refStatus || myIsOwner) return "";
-    var g=Math.min(refStatus.groups_active||0,9), t=Math.min(refStatus.teachers||0,7);
+    var g=Math.min(refStatus.groups_active||0,9), t=Math.min(refStatus.teachers||0,6);
     var free=refStatus.free_until && new Date(refStatus.free_until)>new Date();
     return '<div class="ref-card" id="refCard" role="button" tabindex="0">'+
       '<div class="rc-main"><div class="rc-l">Пригласи в «Домашку»</div>'+
       '<div class="rc-t">'+(free?'🎉 Семестр бесплатный до '+fmtShortDate(refStatus.free_until):'Семестр бесплатно для всей группы')+'</div>'+
-      '<div class="rc-s">'+(free?'Спасибо, что зовёте других!':'Позовите 9 других групп или 7 преподавателей')+'</div>'+
+      '<div class="rc-s">'+(free?'Спасибо, что зовёте других!':'Позовите 9 других групп или 6 преподавателей')+'</div>'+
       '<div class="rc-bars"><div><span>Группы <b>'+g+'/9</b></span><i><em style="width:'+(g/9*100)+'%"></em></i></div>'+
-      '<div><span>Преподаватели <b>'+t+'/7</b></span><i><em style="width:'+(t/7*100)+'%"></em></i></div></div></div>'+
+      '<div><span>Преподаватели <b>'+t+'/6</b></span><i><em style="width:'+(t/6*100)+'%"></em></i></div></div></div>'+
       '<div class="rc-qr" id="refQrSmall"></div></div>';
   }
   function afterReferralCard(){
@@ -2116,10 +2117,10 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     document.getElementById("grpTitle").textContent="Пригласи в «Домашку»";
     document.getElementById("grpBody").innerHTML=
       '<p style="color:var(--text-secondary);font-size:.88rem;line-height:1.5">Отправь ссылку или покажи QR-код студентам <b>других групп</b> и преподавателям. '+
-      'Когда <b>9 новых групп</b> начнут пользоваться «Домашкой» или войдут <b>7 преподавателей</b> — у вашей группы весь семестр бесплатно.</p>'+
+      'Когда <b>9 новых групп</b> начнут пользоваться «Домашкой» или войдут <b>6 преподавателей</b> — у вашей группы весь семестр бесплатно.</p>'+
       '<div class="grp-qr" id="refQrBig" style="width:210px"></div>'+
       '<div class="grp-link">'+esc(link)+'</div>'+shareButtons("ap")+
-      '<div class="ref-stats"><div><b>'+g+'</b> / 9<small>групп засчитано</small></div><div><b>'+t+'</b> / 7<small>преподавателей</small></div></div>'+
+      '<div class="ref-stats"><div><b>'+g+'</b> / 9<small>групп засчитано</small></div><div><b>'+t+'</b> / 6<small>преподавателей</small></div></div>'+
       (w?'<p style="color:var(--text-secondary);font-size:.8rem;line-height:1.45;margin-top:8px">Ещё '+w+' '+(w===1?'группа ждёт':'групп ждут')+': группа засчитывается, когда в ней наберётся 3 студента.</p>':'')+
       '<p style="color:var(--text-secondary);font-size:.8rem;line-height:1.45;margin-top:8px">Засчитывается, если по твоей ссылке человек стал <b>первым</b> из своей группы. Пригласить одногруппников — в «Ещё → Пригласить в группу».</p>';
     document.getElementById("ovGroup").classList.add("open");

@@ -336,7 +336,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     el.innerHTML=rows.map(function(x){
       var free=x.free_until && new Date(x.free_until)>new Date();
       return '<div class="lit-row"><div><div class="lname">Группа '+esc(x.group_name)+(free?' · 🎉 бесплатно до '+fmtDate(x.free_until):'')+'</div>'+
-        '<div class="lsub">групп: '+x.groups_active+'/9'+(x.groups_waiting?' (+'+x.groups_waiting+' ждут 3 студентов)':'')+' · преподавателей: '+x.teachers+'/7</div></div></div>';
+        '<div class="lsub">групп: '+x.groups_active+'/9'+(x.groups_waiting?' (+'+x.groups_waiting+' ждут 3 студентов)':'')+' · преподавателей: '+x.teachers+'/6</div></div></div>';
     }).join("");
   }
   function parseMailList(text){

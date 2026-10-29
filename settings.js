@@ -138,6 +138,7 @@
     "⚙️":'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
     "📋":'<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h6M9 19h3"/>',
     "🤒":'<path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/>',
+    "🌐":'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     "🚩":'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>'
   };
   function ic(e){ var p = ICON_SVG[e]; return p ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>' : (e || ""); }
@@ -173,6 +174,11 @@
       var opt = T.list().map(function(t){ return '<option value="' + t.key + '"' + (t.key === T.setting() ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("");
       h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">🖼️</span><span class="ds-t">Фон<small id="dsBgNow">Сейчас: ' + esc(T.activeName()) + '</small></span><select id="dsBg" aria-label="Фон">' + opt + "</select></div>";
       h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">✨</span><span class="ds-t">Анимация фона<small>Снег, листья, салют</small></span>' + sw("dsFx", T.fx()) + "</div>";
+    }
+    if(window.DomashkaI18n){
+      var cur = DomashkaI18n.current();
+      h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">' + ic("🌐") + '</span><span class="ds-t">Язык</span><select id="dsLang" aria-label="Язык">' +
+        DomashkaI18n.langs.map(function(l){ return '<option value="' + l.code + '"' + (l.code === cur ? " selected" : "") + ">" + esc(l.name) + "</option>"; }).join("") + "</select></div>";
     }
     var ts = lsGet("domashka_text", "normal");
     h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">🔠</span><span class="ds-t">Размер текста</span><select id="dsText" aria-label="Размер текста">' +
@@ -216,6 +222,7 @@
     $("dsLogout").onclick = logout;
     if($("dsBg")) $("dsBg").onchange = function(){ T.set(this.value); $("dsBgNow").textContent = "Сейчас: " + T.activeName(); };
     if($("dsFx")) $("dsFx").onchange = function(){ T.setFx(this.checked); };
+    if($("dsLang")) $("dsLang").onchange = function(){ DomashkaI18n.set(this.value); };
     $("dsText").onchange = function(){ lsSet("domashka_text", this.value); applyTextSize(); };
     if($("dsRem")) $("dsRem").onchange = function(){ lsSet("domashka_reminders", this.checked ? "1" : "0"); if(opts.onRemindersChange) opts.onRemindersChange(this.checked); };
     $("dsExport").onclick = exportData;
