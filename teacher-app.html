@@ -14,6 +14,7 @@
 <script src="i18n.js"></script>
 <script src="settings.js"></script>
 <script src="tabbar.js"></script>
+<script src="ads.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -340,6 +341,7 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
     </div>
 
     <div id="dvBanners"></div>
+    <div id="adSlot"></div>
     <div id="dvList"></div>
   </div>
 
@@ -664,6 +666,7 @@ async function loadTeacherProfile(){
   document.getElementById("app").style.display = "block";
 
   await loadLessons();
+  if(window.DomashkaAds) DomashkaAds.load(sb, "teachers").then(drawAd);
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
   try{ var sv = localStorage.getItem("domashka_teacher_view"); if(["weeks", "lit", "journal", "plan"].indexOf(sv) !== -1) currentView = sv; }catch(e){}
   setView(currentView);
@@ -800,6 +803,10 @@ function mergeLessons(list){
   return out;
 }
 
+function drawAd(){
+  var slot = document.getElementById("adSlot"); if(!slot || !window.DomashkaAds) return;
+  slot.innerHTML = DomashkaAds.html(); DomashkaAds.bind();
+}
 function renderDay(){
   renderDayLabel();
   var wd = weekAndDayFromAbs(dayViewAbsIndex);

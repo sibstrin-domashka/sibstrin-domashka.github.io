@@ -265,7 +265,8 @@ html[data-ui] .dv-subj,html[data-ui] .lesson-subject,html[data-ui] .t-name,html[
 
 /* Кнопки, которым нужен свой размер текста */
 html[data-ui] .tabbar button{font-size:.6875rem;border-radius:12px}
-html[data-ui] .mod-x,html[data-ui] .ds-x{font-size:1.25rem}
+html[data-ui] .mod-x,html[data-ui] .ds-x{font-size:0;line-height:0;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center;justify-content:center;flex:0 0 auto;box-sizing:border-box}
+html[data-ui] .mod-x::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat}
 html[data-ui] .dv-nav-btn,html[data-ui] .nav-btn{font-size:1.2rem}
 html[data-ui] .ds-btn{font-size:var(--fs-base)}
 html[data-ui] .ds-row{font-size:var(--fs-base)}

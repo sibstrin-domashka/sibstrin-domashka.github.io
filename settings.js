@@ -40,7 +40,8 @@
       "@keyframes dsUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}" +
       ".ds-head{position:sticky;top:0;z-index:2;background:" + card + ";display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid " + bd + "}" +
       ".ds-head h3{font-family:var(--font-display,'Unbounded',sans-serif);font-size:1.05rem;font-weight:600;margin:0}" +
-      ".ds-x{background:rgba(255,255,255,.1);color:" + txt + ";border:none;width:32px;height:32px;border-radius:50%;font-size:1.25rem;cursor:pointer;line-height:1}" +
+      ".ds-x{background:rgba(255,255,255,.1);color:" + txt + ";border:none;width:34px;height:34px;min-width:34px;flex:0 0 34px;padding:0 !important;margin:0 0 0 12px;border-radius:50% !important;cursor:pointer;display:inline-flex !important;align-items:center;justify-content:center;line-height:0;box-sizing:border-box}" +
+      ".ds-x svg{width:16px;height:16px;display:block;pointer-events:none}" +
       ".ds-body{padding:6px 16px 0}" +
       ".ds-me{display:flex;align-items:center;gap:12px;padding:14px 4px 6px}" +
       ".ds-ava{width:48px;height:48px;border-radius:50%;background:" + acc + ";color:#06201C;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;overflow:hidden;flex-shrink:0}" +
@@ -105,7 +106,7 @@
       document.body.appendChild(ov);
     }
     ov.innerHTML = '<div class="ds-sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="ds-head"><h3>' + esc(title) +
-      '</h3><button class="ds-x" aria-label="Закрыть" data-close="' + id + '">×</button></div><div class="ds-body">' + html + '</div></div>';
+      '</h3><button class="ds-x" aria-label="Закрыть" data-close="' + id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="ds-body">' + html + '</div></div>';
     ov.querySelector("[data-close]").onclick = function(){ close(id); };
     ov.classList.add("on");
     return ov;

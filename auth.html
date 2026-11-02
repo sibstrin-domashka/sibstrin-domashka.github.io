@@ -83,6 +83,8 @@ input::placeholder{color:rgba(218,241,222,.4)}
 .role-tabs{display:flex;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(142,182,155,.22);border-radius:12px;padding:4px;margin-bottom:16px}
 .role-tabs button{flex:1;padding:10px 6px;border:none;border-radius:9px;background:transparent;color:#A8C7BC;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
 .role-tabs button.on{background:#8EB69B;color:#051F20}
+.btn.btn-sec{background:transparent;color:#9FE3BE;border:1.5px solid rgba(159,227,190,.55);margin-top:10px}
+.btn.btn-sec:disabled{opacity:.6}
 .switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:#9FE3BE;cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
 .first-box{background:rgba(233,165,74,.12);border:1px solid rgba(233,165,74,.4);border-radius:12px;padding:12px 14px;margin:10px 0;line-height:1.5;font-size:.9rem}
 .qr-wrap{background:#fff;border-radius:12px;padding:10px;width:180px;margin:12px auto}
@@ -106,9 +108,11 @@ input::placeholder{color:rgba(218,241,222,.4)}
 
   <!-- ======== Преподаватель: вход по ФИО и коду ======== -->
   <div id="tLoginScreen" class="screen">
-    <div class="hint" style="margin-top:0">Введите ФИО и код доступа из письма.</div>
+    <div class="hint" style="margin-top:0">Введите ФИО и нажмите «Получить код на почту» — письмо придёт на вашу рабочую почту НГАСУ.</div>
     <label>Фамилия Имя Отчество</label>
     <input type="text" id="tName" placeholder="Иванов Иван Иванович" autocomplete="name">
+    <button class="btn btn-sec" id="tSendBtn" type="button">Получить код на почту</button>
+    <div class="msg" id="tSendMsg"></div>
     <label>Код доступа</label>
     <input type="text" id="tCode" placeholder="Например: A1B2C3" autocapitalize="characters" autocomplete="one-time-code">
     <button class="btn" id="tLoginBtn">Войти</button>
@@ -117,7 +121,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
   </div>
   <div id="tReqScreen" class="screen">
     <div class="invite-note" id="reqInvite" style="display:none"></div>
-    <div class="hint" style="margin-top:0">Оставьте заявку — код входа придёт на указанную почту, обычно в течение дня.</div>
+    <div class="hint" style="margin-top:0">Если вас нет в списке — оставьте заявку, код входа придёт на указанную почту, обычно в течение дня.</div>
     <label>Фамилия Имя Отчество</label>
     <input type="text" id="reqName" placeholder="Иванов Иван Иванович" autocomplete="name">
     <label>Рабочая почта</label>
@@ -449,6 +453,38 @@ input::placeholder{color:rgba(218,241,222,.4)}
       goTeacherApp();
     }catch(e){ tMsg("tMsg", "Что-то пошло не так: " + e.message); }
     finally{ btn.disabled = false; btn.textContent = "Войти"; }
+  };
+  document.getElementById("tSendBtn").onclick = async function(){
+    var btn = this, nameEl = document.getElementById("tName");
+    var name = nameEl.value.trim().replace(/\s+/g, " ");
+    if(name.split(" ").length < 2){ tMsg("tSendMsg", "Введите фамилию, имя и отчество полностью"); return; }
+    btn.disabled = true; btn.textContent = "Отправляем...";
+    var res = null;
+    try{
+      var r = await fetch(SUPABASE_URL + "/functions/v1/teacher-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+        body: JSON.stringify({ full_name: name })
+      });
+      res = await r.json().catch(function(){ return null; });
+    }catch(e){ res = null; }
+    btn.disabled = false; btn.textContent = "Получить код на почту";
+    var st = res && res.status;
+    if(st === "ok"){
+      if(res.full_name) nameEl.value = res.full_name;
+      tMsg("tSendMsg", "Письмо с кодом отправлено на " + res.email + ". Если его нет — проверьте папку «Спам».", true);
+      btn.textContent = "Отправить ещё раз";
+      document.getElementById("tCode").focus();
+    } else if(st === "not_found" || st === "no_email"){
+      tMsg("tSendMsg", "Не нашли вас в списке преподавателей. Проверьте ФИО или оставьте заявку — код пришлём вручную.");
+      document.getElementById("reqName").value = name;
+    } else if(st === "too_often"){
+      tMsg("tSendMsg", "Письмо уже отправлено недавно. Подождите пару минут и проверьте почту, в том числе «Спам».");
+    } else if(st === "bad_name"){
+      tMsg("tSendMsg", "Введите фамилию, имя и отчество полностью");
+    } else {
+      tMsg("tSendMsg", "Не получилось отправить письмо. Попробуйте ещё раз через минуту.");
+    }
   };
   document.getElementById("reqBtn").onclick = async function(){
     var btn = this;

@@ -29,3 +29,16 @@ window.DOMASHKA_CONFIG = {
   legalDate: "28.10.2026",          // дата редакции документов
   siteUrl: "https://sibstrin-domashka.github.io/"
 };
+
+/* Сборка из магазина приложений (Google Play / App Store / RuStore):
+   там нельзя вести на оплату на сайте, поэтому кнопки покупки скрываются.
+   Android-приложение (TWA) открывает сайт с referrer «android-app://…» — запоминаем это. */
+(function(){
+  try{
+    if(String(document.referrer).indexOf("android-app://") === 0) sessionStorage.setItem("domashka_store", "android");
+    var q = new URLSearchParams(location.search).get("store");
+    if(q) sessionStorage.setItem("domashka_store", q);
+    var st = sessionStorage.getItem("domashka_store");
+    if(st || window.Capacitor) window.DOMASHKA_NATIVE_IOS = true;   // старое имя флага: «скрыть покупки»
+  }catch(e){}
+})();

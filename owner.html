@@ -190,6 +190,33 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   <p class="hint-owner" style="margin-top:14px"><b>Последние заказы</b></p>
   <div id="orderList"><div class="loading">Загрузка...</div></div>
 
+  <div class="section-title">📣 Реклама и объявления</div>
+  <p class="hint-owner">Карточка появится на главном экране — у студентов под карточкой «Пригласи в Домашку», у преподавателей над парами. Если объявлений несколько, они меняются раз в день. Человек может скрыть карточку на сутки.</p>
+  <div style="display:grid;gap:8px">
+    <input id="adTitle" maxlength="80" placeholder="Заголовок (обязательно)" style="padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box">
+    <textarea id="adBody" maxlength="300" rows="2" placeholder="Текст (до 300 символов)" style="padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="adLink" placeholder="Ссылка https://…" style="flex:2;min-width:180px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box">
+      <input id="adBtnText" maxlength="30" placeholder="Текст кнопки: Подробнее" style="flex:1;min-width:130px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label class="hint-owner" style="margin:0">Картинка (квадратная):</label>
+      <input id="adImg" type="file" accept="image/png,image/jpeg,image/webp" style="flex:1;min-width:160px">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="adAud" style="flex:1;min-width:140px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box"><option value="all">всем</option><option value="students">только студентам</option><option value="teachers">только преподавателям</option></select>
+      <select id="adDays" style="flex:1;min-width:120px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box"><option value="7">на неделю</option><option value="30" selected>на месяц</option><option value="90">на 3 месяца</option><option value="">без срока</option></select>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="adAdv" maxlength="120" placeholder="Рекламодатель (ИП/ООО, ИНН)" style="flex:2;min-width:180px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box">
+      <input id="adErid" maxlength="60" placeholder="erid (для платной рекламы)" style="flex:1;min-width:130px;padding:10px;border-radius:12px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary);box-sizing:border-box">
+    </div>
+    <p class="hint-owner" style="margin:0">Платную рекламу по закону нужно маркировать: зарегистрировать в ОРД и указать рекламодателя и erid. Для своих объявлений («Пригласи друзей», новости приложения) эти поля можно оставить пустыми.</p>
+    <button class="btn-add" id="adSave">Опубликовать объявление</button>
+    <div class="hint-owner" id="adMsg"></div>
+  </div>
+  <div id="adList" style="margin-top:10px"><div class="loading">Загрузка...</div></div>
+
   <div class="section-title">🎁 Приглашения в «Домашку»</div>
   <div id="refList"><div class="loading">Загрузка...</div></div>
 
@@ -350,6 +377,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     }
     await loadTeacherRequests();
     await loadReferrals();
+    await loadAdsOwner();
     await loadPlansOwner();
     await loadOrders();
     await loadPromos();
@@ -409,6 +437,59 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
         '<div class="lsub">группа '+esc((x.groups&&x.groups.name)||"—")+' · '+esc(x.email||"")+' · '+fmtDate(x.created_at)+(x.paid_until?' · до '+fmtDate(x.paid_until):'')+'</div></div></div>';
     }).join("");
   }
+  async function loadAdsOwner(){
+    var el=document.getElementById("adList");
+    var r=await sb.from("ads").select("*").order("created_at",{ascending:false}).limit(30);
+    if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 25_ads_and_teacher_codes.sql ('+esc(r.error.message)+')</div>'; return; }
+    var rows=r.data||[], now=new Date();
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Объявлений пока нет.</p>'; return; }
+    el.innerHTML=rows.map(function(x){
+      var live=x.active && (!x.ends_at || new Date(x.ends_at)>now);
+      var aud={all:"всем",students:"студентам",teachers:"преподавателям"}[x.audience]||x.audience;
+      var ctr=x.views?Math.round(x.clicks/x.views*1000)/10:0;
+      return '<div class="lit-row"><div style="display:flex;gap:10px;align-items:center;min-width:0">'+
+        (x.image_url?'<img src="'+esc(x.image_url)+'" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">':'')+
+        '<div style="min-width:0"><div class="lname">'+(live?'🟢 ':'⚪ ')+esc(x.title)+'</div>'+
+        '<div class="lsub">'+aud+' · показов '+x.views+' · переходов '+x.clicks+(x.views?' ('+ctr+'%)':'')+(x.ends_at?' · до '+fmtDate(x.ends_at):'')+'</div></div></div>'+
+        '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn-mini" data-adtoggle="'+x.id+'" data-on="'+(x.active?1:0)+'">'+(x.active?'Выключить':'Включить')+'</button>'+
+        '<button class="btn-mini" style="background:var(--danger,#E8605C);color:#fff" data-addel="'+x.id+'">Удалить</button></div></div>';
+    }).join("");
+    el.querySelectorAll("[data-adtoggle]").forEach(function(b){ b.onclick=async function(){
+      await sb.from("ads").update({ active: b.dataset.on!=="1" }).eq("id", b.dataset.adtoggle); loadAdsOwner(); }; });
+    el.querySelectorAll("[data-addel]").forEach(function(b){ b.onclick=async function(){
+      if(!confirm("Удалить объявление?")) return;
+      await sb.from("ads").delete().eq("id", b.dataset.addel); loadAdsOwner(); }; });
+  }
+  document.getElementById("adSave").onclick=async function(){
+    var btn=this, msg=document.getElementById("adMsg");
+    var title=document.getElementById("adTitle").value.trim();
+    var link=document.getElementById("adLink").value.trim();
+    if(!title){ msg.textContent="Напиши заголовок."; return; }
+    if(link && !/^https:\/\//i.test(link)){ msg.textContent="Ссылка должна начинаться с https://"; return; }
+    btn.disabled=true; msg.textContent="Публикуем...";
+    var img=null, f=document.getElementById("adImg").files[0];
+    if(f){
+      if(f.size>2*1024*1024){ msg.textContent="Картинка больше 2 МБ — уменьши её."; btn.disabled=false; return; }
+      var path=Date.now()+"-"+Math.random().toString(36).slice(2,8)+"."+(f.type.split("/")[1]||"jpg");
+      var up=await sb.storage.from("ads").upload(path, f, { contentType:f.type, upsert:false });
+      if(up.error){ msg.textContent="Картинка не загрузилась: "+up.error.message; btn.disabled=false; return; }
+      img=sb.storage.from("ads").getPublicUrl(path).data.publicUrl;
+    }
+    var days=document.getElementById("adDays").value;
+    var r=await sb.from("ads").insert({
+      title:title, body:document.getElementById("adBody").value.trim()||null,
+      link_url:link||null, button_text:document.getElementById("adBtnText").value.trim()||null,
+      image_url:img, audience:document.getElementById("adAud").value,
+      advertiser:document.getElementById("adAdv").value.trim()||null, erid:document.getElementById("adErid").value.trim()||null,
+      ends_at: days ? new Date(Date.now()+days*86400000).toISOString() : null
+    });
+    btn.disabled=false;
+    if(r.error){ msg.textContent="Не сохранилось: "+r.error.message; return; }
+    msg.textContent="Готово — объявление уже видно в приложении.";
+    ["adTitle","adBody","adLink","adBtnText","adAdv","adErid"].forEach(function(id){ document.getElementById(id).value=""; });
+    document.getElementById("adImg").value="";
+    loadAdsOwner();
+  };
   async function loadReferrals(){
     var el=document.getElementById("refList");
     var r=await sb.rpc("owner_referrals");

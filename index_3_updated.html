@@ -20,6 +20,7 @@
 <script src="i18n.js"></script>
 <script src="settings.js"></script>
 <script src="tabbar.js"></script>
+<script src="ads.js"></script>
 <style>
 :root {
   /* Домашка design system — client theme (см. артефакт "Домашка — Design System") */
@@ -1037,6 +1038,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       checkAccess();
       refreshMoreBadge();
       loadReferral();
+      if(window.DomashkaAds) DomashkaAds.load(sb, "students").then(function(a){ if(a) render(); });
       if(!window.__repliesChecked && window.DomashkaSettings){ window.__repliesChecked=true; setTimeout(function(){ DomashkaSettings.checkReplies(); }, 2500); }
       if(showFeedback) toast("Расписание обновлено");
     }catch(e){
@@ -1215,6 +1217,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     var day=data.weeks[activeWeek].days[showDay];
     html+=widgetHtml();
     html+=referralCardHtml();
+    if(window.DomashkaAds) html+=DomashkaAds.html();
     html+=deadlinesBanner();
     html+='<div class="dv-nav">';
     html+='<button id="dvPrev" class="dv-nav-btn"'+(dayViewAbsIndex<=0?' disabled':'')+'>‹</button>';
@@ -2125,6 +2128,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       '<div class="rc-qr" id="refQrSmall"></div></div>';
   }
   function afterReferralCard(){
+    if(window.DomashkaAds) DomashkaAds.bind();
     var card=document.getElementById("refCard"); if(!card || !refStatus) return;
     drawQrInto("refQrSmall", appInviteLink());
     card.onclick=openAppInvite;
