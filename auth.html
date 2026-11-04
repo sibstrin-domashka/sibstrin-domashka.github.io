@@ -87,6 +87,10 @@ input::placeholder{color:rgba(218,241,222,.4)}
 .btn.btn-sec:disabled{opacity:.6}
 .switch.pulse{color:#fff;font-weight:700;text-decoration:underline}
 .add-group{margin-top:10px;padding:12px;border-radius:12px;background:rgba(159,227,190,.08);border:1px solid rgba(159,227,190,.3);font-size:.9rem;line-height:1.45}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:48px !important}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:none;background:transparent;color:#9FE3BE;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:10px}
+.pw-eye svg{width:22px;height:22px}
 .switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:#9FE3BE;cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
 .first-box{background:rgba(233,165,74,.12);border:1px solid rgba(233,165,74,.4);border-radius:12px;padding:12px 14px;margin:10px 0;line-height:1.5;font-size:.9rem}
 .qr-wrap{background:#fff;border-radius:12px;padding:10px;width:180px;margin:12px auto}
@@ -156,17 +160,57 @@ input::placeholder{color:rgba(218,241,222,.4)}
     <div class="whoami" id="whoamiBox"></div>
     <div class="pending-note" id="pendingNote" style="display:none">Тебя пока нет в списке группы — после регистрации заявку подтвердит кто-то из одногруппников. До этого расписание и домашка будут скрыты.</div>
     <div id="signupFields">
-      <div class="hint" style="margin-top:4px">Пароль придумывать не нужно: на этом устройстве вход запомнится. Если понадобится войти с другого телефона — пароль можно посмотреть в «Настройки → Пароль для входа».</div>
+      <label>Придумай пароль</label>
+      <input type="password" id="pass1" placeholder="Минимум 6 символов" autocomplete="new-password">
+      <label>Повтори пароль</label>
+      <input type="password" id="pass2" placeholder="Ещё раз" autocomplete="new-password">
+      <label class="consent"><input type="checkbox" id="remember1" checked><span>Запомнить меня на этом устройстве и больше не спрашивать пароль</span></label>
+      <div class="hint">Пароль понадобится, только чтобы войти с другого устройства. Его всегда можно посмотреть или сменить в «Настройки → Пароль для входа».</div>
       <label class="consent"><input type="checkbox" id="consent"><span>Я принимаю <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a> и даю согласие на обработку персональных данных по <a href="privacy.html" target="_blank" rel="noopener">Политике конфиденциальности</a></span></label>
     </div>
     <div id="loginFields" style="display:none">
-      <div class="hint" style="margin-top:4px">Ты уже зарегистрирован(а) на другом устройстве. Открой там «Настройки → Пароль для входа» и введи его здесь.</div>
+      <div class="hint" style="margin-top:4px">Ты уже зарегистрирован(а). Введи свой пароль — его можно посмотреть в «Настройки → Пароль для входа» на устройстве, где ты уже входил(а).</div>
       <label>Пароль</label>
-      <input type="password" id="passLogin" placeholder="Пароль из настроек" autocomplete="current-password">
+      <input type="password" id="passLogin" placeholder="Твой пароль" autocomplete="current-password">
+      <label class="consent"><input type="checkbox" id="remember2" checked><span>Запомнить меня на этом устройстве и больше не спрашивать пароль</span></label>
+      <button class="switch" id="forgotBtn" type="button">Забыл(а) пароль?</button>
     </div>
     <button class="btn" id="passSubmitBtn">Войти</button>
     <div class="msg" id="passMsg"></div>
     <span class="back-link" id="backLink">← Назад, я не тот человек / не та группа</span>
+  </div>
+
+  <div id="resetScreen" class="screen">
+    <div class="whoami" id="resetWho"></div>
+    <div id="resetMail" style="display:none">
+      <div class="first-box" style="text-align:left">📧 <b>Код отправлен на твою почту НГАСУ</b> <span id="resetMailAddr"></span>.<br>Открой почту (проверь и «Спам») и введи 6 цифр из письма. Код действует 15 минут.</div>
+      <label>Код из письма</label>
+      <input type="text" id="rcode" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" style="letter-spacing:6px;font-size:1.3rem;text-align:center">
+      <label>Новый пароль</label>
+      <input type="password" id="rmp1" placeholder="Минимум 6 символов" autocomplete="new-password">
+      <label>Повтори пароль</label>
+      <input type="password" id="rmp2" placeholder="Ещё раз" autocomplete="new-password">
+      <label class="consent"><input type="checkbox" id="remember4" checked><span>Запомнить меня на этом устройстве и больше не спрашивать пароль</span></label>
+      <button class="btn" id="resetMailSave" type="button">Сменить пароль и войти</button>
+      <button class="switch" id="resetResend" type="button">Отправить код ещё раз</button>
+      <button class="switch" id="resetNoMail" type="button">Нет доступа к почте НГАСУ?</button>
+    </div>
+    <div id="resetWait">
+      <div class="first-box" style="text-align:left">🔐 <b>Заявка на сброс пароля отправлена владельцу «Домашки».</b><br>Напиши в поддержку <b id="resetSupport"></b> с почты или из соцсети, по которой тебя можно узнать, — после проверки сброс подтвердят.</div>
+      <div class="hint" id="resetState">Ждём подтверждения… Эту страницу можно не закрывать — как только подтвердят, здесь появится поле для нового пароля.</div>
+      <button class="btn btn-sec" id="resetCheck" type="button">Проверить сейчас</button>
+    </div>
+    <div id="resetNew" style="display:none">
+      <div class="first-box" style="text-align:left">✅ <b>Сброс подтверждён.</b> Придумай новый пароль.</div>
+      <label>Новый пароль</label>
+      <input type="password" id="rp1" placeholder="Минимум 6 символов" autocomplete="new-password">
+      <label>Повтори пароль</label>
+      <input type="password" id="rp2" placeholder="Ещё раз" autocomplete="new-password">
+      <label class="consent"><input type="checkbox" id="remember3" checked><span>Запомнить меня на этом устройстве и больше не спрашивать пароль</span></label>
+      <button class="btn" id="resetSave" type="button">Сохранить и войти</button>
+    </div>
+    <div class="msg" id="resetMsg"></div>
+    <span class="back-link" id="resetBack">← Назад ко входу</span>
   </div>
 
   <div id="doneScreen" class="screen">
@@ -342,15 +386,162 @@ input::placeholder{color:rgba(218,241,222,.4)}
     }
   };
 
-  // Пароль для входа с других устройств: создаётся автоматически и хранится
-  // только на этом устройстве; посмотреть — «Настройки → Пароль для входа».
-  function makePw(){
-    var abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", a = new Uint32Array(12), out = "";
-    crypto.getRandomValues(a);
-    for(var i = 0; i < 12; i++){ out += abc[a[i] % abc.length]; if(i === 3 || i === 7) out += "-"; }
-    return out;
+  // «Запомнить меня»: вход остаётся на устройстве, а пароль можно посмотреть в настройках.
+  // Без галочки — после закрытия приложения пароль спросят снова.
+  function applyRemember(uid, pw, remember){
+    try{
+      if(remember){
+        localStorage.removeItem("domashka_no_remember");
+        if(uid && pw) localStorage.setItem("domashka_pw_" + uid, pw);
+      } else {
+        localStorage.setItem("domashka_no_remember", "1");
+        sessionStorage.setItem("domashka_alive", "1");
+        if(uid) localStorage.removeItem("domashka_pw_" + uid);
+      }
+    }catch(e){}
   }
-  function rememberPw(uid, pw){ try{ if(uid && pw) localStorage.setItem("domashka_pw_" + uid, pw); }catch(e){} }
+  function randomSecret(){
+    var a = new Uint8Array(24); crypto.getRandomValues(a);
+    return Array.prototype.map.call(a, function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
+  }
+
+  // Глазик у всех полей пароля.
+  var EYE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.1 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  document.querySelectorAll('input[type="password"]').forEach(function(inp){
+    var w = document.createElement("div"); w.className = "pw-wrap";
+    inp.parentNode.insertBefore(w, inp); w.appendChild(inp);
+    var b = document.createElement("button"); b.type = "button"; b.className = "pw-eye"; b.setAttribute("aria-label", "Показать пароль"); b.innerHTML = EYE_ON;
+    b.onclick = function(){ var show = inp.type === "password"; inp.type = show ? "text" : "password"; b.innerHTML = show ? EYE_OFF : EYE_ON; b.setAttribute("aria-label", show ? "Скрыть пароль" : "Показать пароль"); };
+    w.appendChild(b);
+  });
+
+  // ---------- Забыл пароль ----------
+  var resetPoll = null;
+  function resetData(){ try{ return JSON.parse(localStorage.getItem("domashka_reset") || "null"); }catch(e){ return null; } }
+  function resetMsg(t, ok){ var m = document.getElementById("resetMsg"); m.textContent = t; m.className = "msg " + (t ? (ok ? "ok" : "err") : ""); }
+  async function checkReset(){
+    var d = resetData(); if(!d) return;
+    var r = await sb.rpc("password_reset_status", { p_id: d.id, p_secret: d.secret });
+    var st = r.data;
+    if(st === "approved"){
+      if(resetPoll){ clearInterval(resetPoll); resetPoll = null; }
+      document.getElementById("resetWait").style.display = "none";
+      document.getElementById("resetNew").style.display = "block";
+      resetMsg("");
+    } else if(st === "rejected" || st === "expired" || st === "used" || !st){
+      if(resetPoll){ clearInterval(resetPoll); resetPoll = null; }
+      localStorage.removeItem("domashka_reset");
+      document.getElementById("resetState").textContent = st === "rejected" ? "Сброс отклонили. Если это ошибка — подай заявку ещё раз и попроси одногруппника подтвердить." : "Заявка устарела — подай её ещё раз.";
+    } else {
+      document.getElementById("resetState").textContent = "Ждём подтверждения… Как только подтвердят, здесь появится поле для нового пароля.";
+    }
+  }
+  function openReset(d){
+    document.getElementById("resetWho").textContent = d.name + " · группа " + (d.groupName || "");
+    document.getElementById("resetWait").style.display = "block";
+    document.getElementById("resetNew").style.display = "none";
+    document.getElementById("resetMail").style.display = "none";
+    document.getElementById("resetSupport").textContent = (window.DOMASHKA_CONFIG && DOMASHKA_CONFIG.supportEmail) || "в поддержку";
+    resetMsg("");
+    showScreen("resetScreen");
+    checkReset();
+    if(resetPoll) clearInterval(resetPoll);
+    resetPoll = setInterval(checkReset, 8000);
+  }
+  async function requestOwnerReset(btn){
+    btn.disabled = true;
+    var secret = randomSecret();
+    var r = await sb.rpc("request_password_reset", { p_group_id: pendingGroupId, p_full_name: pendingName, p_secret: secret });
+    btn.disabled = false;
+    if(r.error){
+      var m = r.error.message || "";
+      resetMsg(/too_many/.test(m) ? "Слишком много заявок на сброс за сутки. Попробуй завтра или напиши в поддержку." : "Не получилось: " + m);
+      return;
+    }
+    var g = document.getElementById("groupSelect"), gname = g.options[g.selectedIndex] ? g.options[g.selectedIndex].text : "";
+    var d = { id: r.data, secret: secret, name: pendingName, groupId: pendingGroupId, groupName: gname };
+    try{ localStorage.setItem("domashka_reset", JSON.stringify(d)); }catch(e){}
+    openReset(d);
+  };
+  async function sendResetMail(btn){
+    btn.disabled = true;
+    var res = null;
+    try{
+      var f = await fetch(SUPABASE_URL + "/functions/v1/teacher-code", { method:"POST",
+        headers:{ "Content-Type":"application/json", "apikey":SUPABASE_ANON_KEY, "Authorization":"Bearer " + SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action:"student_reset", group_id: pendingGroupId, full_name: pendingName }) });
+      res = await f.json().catch(function(){ return null; });
+    }catch(e){}
+    btn.disabled = false;
+    var st = res && res.status;
+    if(st === "ok"){
+      document.getElementById("resetWho").textContent = pendingName;
+      document.getElementById("resetMailAddr").textContent = res.email ? "(" + res.email + ")" : "";
+      document.getElementById("resetMail").style.display = "block";
+      document.getElementById("resetWait").style.display = "none";
+      document.getElementById("resetNew").style.display = "none";
+      resetMsg("");
+      showScreen("resetScreen");
+      document.getElementById("rcode").focus();
+      return true;
+    }
+    var t = st === "too_often" ? "Код уже отправлен недавно. Подожди минуту и проверь почту (и «Спам»)."
+          : st === "not_found" ? "Не нашли такого студента в этой группе."
+          : st === "busy" ? "Сейчас слишком много запросов. Попробуй через несколько минут."
+          : "Не получилось отправить письмо. Попробуй позже или нажми «Нет доступа к почте НГАСУ?».";
+    if(document.getElementById("resetScreen").classList.contains("active")) resetMsg(t); else showPassMsg(t);
+    return false;
+  }
+  document.getElementById("forgotBtn").onclick = function(){ sendResetMail(this); };
+  document.getElementById("resetResend").onclick = function(){ sendResetMail(this).then(function(ok){ if(ok) resetMsg("Новый код отправлен", true); }); };
+  document.getElementById("resetNoMail").onclick = function(){
+    document.getElementById("resetMail").style.display = "none";
+    document.getElementById("resetSupport").textContent = (window.DOMASHKA_CONFIG && DOMASHKA_CONFIG.supportEmail) || "в поддержку";
+    requestOwnerReset(this);
+  };
+  document.getElementById("resetMailSave").onclick = async function(){
+    var btn = this, code = document.getElementById("rcode").value.replace(/\D/g, "");
+    var a = document.getElementById("rmp1").value, b = document.getElementById("rmp2").value;
+    if(code.length !== 6){ resetMsg("Введи 6 цифр из письма"); return; }
+    if(a.length < 6){ resetMsg("Пароль — минимум 6 символов"); return; }
+    if(a !== b){ resetMsg("Пароли не совпадают"); return; }
+    btn.disabled = true; btn.textContent = "Проверяем...";
+    var r = await sb.rpc("student_reset_finish", { p_group_id: pendingGroupId, p_full_name: pendingName, p_code: code, p_new_password: a });
+    var row = r.data && r.data[0];
+    if(r.error || !row || !row.ok){
+      btn.disabled = false; btn.textContent = "Сменить пароль и войти";
+      var e = (row && row.error) || (r.error && r.error.message) || "";
+      resetMsg(e === "wrong_code" ? "Неверный код. Проверь письмо." : e === "expired" ? "Код устарел — нажми «Отправить код ещё раз»."
+             : e === "too_many_attempts" ? "Слишком много неверных попыток — запроси новый код." : "Не получилось: " + e);
+      return;
+    }
+    var si = await sb.auth.signInWithPassword({ email: row.email, password: a });
+    btn.disabled = false; btn.textContent = "Сменить пароль и войти";
+    if(si.error){ resetMsg("Пароль сменён, но войти не получилось: " + si.error.message); return; }
+    applyRemember(si.data && si.data.user && si.data.user.id, a, document.getElementById("remember4").checked);
+    goToApp();
+  };
+  document.getElementById("resetCheck").onclick = checkReset;
+  document.getElementById("resetBack").onclick = function(){ if(resetPoll){ clearInterval(resetPoll); resetPoll = null; } showScreen("joinScreen"); };
+  document.getElementById("resetSave").onclick = async function(){
+    var d = resetData(), btn = this;
+    var a = document.getElementById("rp1").value, b = document.getElementById("rp2").value;
+    if(a.length < 6){ resetMsg("Пароль — минимум 6 символов"); return; }
+    if(a !== b){ resetMsg("Пароли не совпадают"); return; }
+    if(!d){ resetMsg("Заявка не найдена — подай её ещё раз"); return; }
+    btn.disabled = true; btn.textContent = "Сохраняем...";
+    var r = await sb.rpc("complete_password_reset", { p_id: d.id, p_secret: d.secret, p_new_password: a });
+    if(r.error || !r.data){ btn.disabled = false; btn.textContent = "Сохранить и войти"; resetMsg("Не получилось: " + ((r.error && r.error.message) || "попробуй ещё раз")); return; }
+    var si = await sb.auth.signInWithPassword({ email: r.data, password: a });
+    btn.disabled = false; btn.textContent = "Сохранить и войти";
+    if(si.error){ resetMsg("Пароль сменён, но войти не получилось: " + si.error.message); return; }
+    localStorage.removeItem("domashka_reset");
+    applyRemember(si.data && si.data.user && si.data.user.id, a, document.getElementById("remember3").checked);
+    goToApp();
+  };
+  // Если заявка уже подана с этого устройства — сразу показать её.
+  (function(){ var d = resetData(); if(d && d.id) setTimeout(function(){ openReset(d); }, 300); })();
 
   document.getElementById("backLink").onclick = function(){
     document.getElementById("passMsg").className = "msg";
@@ -375,7 +566,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
           showPassMsg("Неверный пароль. Посмотри его в «Настройки → Пароль для входа» на устройстве, где ты уже входил(а).");
           return;
         }
-        rememberPw(signIn.data && signIn.data.user && signIn.data.user.id, password);
+        applyRemember(signIn.data && signIn.data.user && signIn.data.user.id, password, document.getElementById("remember2").checked);
         goToApp();
       } catch(e){
         showPassMsg("Что-то пошло не так: " + e.message);
@@ -385,8 +576,11 @@ input::placeholder{color:rgba(218,241,222,.4)}
       return;
     }
 
-    // First-time registration: пароль создаём сами и запоминаем на устройстве.
-    var p1 = makePw();
+    // First-time registration.
+    var p1 = document.getElementById("pass1").value;
+    var p2 = document.getElementById("pass2").value;
+    if(p1.length < 6){ showPassMsg("Пароль — минимум 6 символов"); return; }
+    if(p1 !== p2){ showPassMsg("Пароли не совпадают"); return; }
     if(!document.getElementById("consent").checked){ showPassMsg("Чтобы зарегистрироваться, отметь согласие с соглашением и политикой"); return; }
 
     btn.disabled = true; btn.textContent = "Регистрируем...";
@@ -394,7 +588,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       var signUp = await sb.auth.signUp({ email: pendingEmail, password: p1 });
       if(signUp.error){ showPassMsg("Ошибка регистрации: " + signUp.error.message); return; }
       session = signUp.data.session;
-      rememberPw(signUp.data.user && signUp.data.user.id, p1);
+      applyRemember(signUp.data.user && signUp.data.user.id, p1, document.getElementById("remember1").checked);
       if(!session){
         // Some Supabase Auth settings require email confirmation even for
         // fake addresses - if so, sign in immediately with the same

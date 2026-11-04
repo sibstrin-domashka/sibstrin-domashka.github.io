@@ -176,6 +176,9 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
   <div class="section-title">👨‍🏫 Заявки преподавателей</div>
   <div id="treqList"><div class="loading">Загрузка...</div></div>
 
+  <div class="section-title">🔐 Сброс паролей</div>
+  <div id="resetList"><div class="loading">Загрузка...</div></div>
+
   <div class="section-title">💳 Тарифы и оплата</div>
   <p class="hint-owner">Укажи цену и включи тариф — он появится на странице оплаты <a href="pay.html" target="_blank">pay.html</a>. Пустая цена = тариф не продаётся.</p>
   <div id="planList"><div class="loading">Загрузка...</div></div>
@@ -432,6 +435,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       });
     }
     await loadTeacherRequests();
+    await loadResetsOwner();
     await loadReferrals();
     await loadAdsOwner();
     await loadPlansOwner();
@@ -599,6 +603,23 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       var r=await sb.rpc("owner_reject_teacher",{p_request:b.getAttribute("data-no")});
       if(r.error){ alertBox("Ошибка: "+r.error.message); return; }
       loadTeacherRequests();
+    }; });
+  }
+  async function loadResetsOwner(){
+    var el=document.getElementById("resetList");
+    var r=await sb.rpc("list_password_resets");
+    if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 28_password_reset.sql ('+esc(r.error.message)+')</div>'; return; }
+    var rows=r.data||[];
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Заявок нет. Обычно сброс подтверждают одногруппники; здесь — на случай, если в группе некому подтвердить.</p>'; return; }
+    el.innerHTML='<p class="hint-owner">Подтверждай, только если человек сам написал тебе (например, в поддержку). После подтверждения на его телефоне появится поле для нового пароля.</p>'+rows.map(function(x){
+      return '<div class="lit-row"><div><div class="lname">'+esc(x.full_name)+'</div><div class="lsub">группа '+esc(x.group_name)+' · '+fmtDate(x.created_at)+'</div></div>'+
+        '<div style="display:flex;gap:6px"><button class="btn-mini" data-rok="'+x.id+'">Подтвердить</button><button class="btn-mini" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border)" data-rno="'+x.id+'">Отклонить</button></div></div>';
+    }).join("");
+    el.querySelectorAll("[data-rok],[data-rno]").forEach(function(b){ b.onclick=async function(){
+      var ok=b.hasAttribute("data-rok"); b.disabled=true;
+      var res=await sb.rpc("decide_password_reset",{p_id:b.getAttribute(ok?"data-rok":"data-rno"), p_approve:ok});
+      if(res.error){ b.disabled=false; alert("Ошибка: "+res.error.message); return; }
+      loadResetsOwner();
     }; });
   }
   function alertBox(m, ok){ var d=document.createElement("div"); d.className=ok?"hint-owner":"error-msg"; if(ok) d.style.cssText="background:rgba(91,208,168,.12);border:1px solid rgba(91,208,168,.4);padding:10px 12px;border-radius:12px;margin-bottom:8px"; d.textContent=m; document.getElementById("treqList").prepend(d); setTimeout(function(){ d.remove(); }, 15000); }

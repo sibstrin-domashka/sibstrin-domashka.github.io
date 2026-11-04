@@ -97,6 +97,19 @@
   }
 
   /* ---------------- Окна ---------------- */
+  // Глазик «показать пароль» у полей пароля.
+  function addEyes(root){
+    var on = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var off = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.1 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+    root.querySelectorAll('input[type="password"]').forEach(function(inp){
+      var w = document.createElement("div"); w.style.position = "relative";
+      inp.parentNode.insertBefore(w, inp); w.appendChild(inp); inp.style.paddingRight = "46px";
+      var b = document.createElement("button"); b.type = "button"; b.innerHTML = on; b.setAttribute("aria-label", "Показать пароль");
+      b.style.cssText = "position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;background:transparent;color:inherit;opacity:.75;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0";
+      b.onclick = function(){ var sh = inp.type === "password"; inp.type = sh ? "text" : "password"; b.innerHTML = sh ? off : on; };
+      w.appendChild(b);
+    });
+  }
   function sheet(id, title, html){
     injectCss();
     var ov = $(id);
@@ -108,6 +121,7 @@
     ov.innerHTML = '<div class="ds-sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="ds-head"><h3>' + esc(title) +
       '</h3><button class="ds-x" aria-label="Закрыть" data-close="' + id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="ds-body">' + html + '</div></div>';
     ov.querySelector("[data-close]").onclick = function(){ close(id); };
+    addEyes(ov);
     ov.classList.add("on");
     return ov;
   }
@@ -272,7 +286,7 @@
       '<p class="ds-p">Нужен, только чтобы войти с <b>другого</b> телефона или компьютера: там выбери свою группу, ФИО и введи этот пароль. На этом устройстве вход уже запомнен.</p>' +
       (pw
         ? '<div class="ds-in" id="dsPwBox" style="font-family:monospace;font-size:1.15rem;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="dsPwVal">' + dots + '</span></div>' +
-          '<div style="display:flex;gap:8px;margin-top:8px"><button class="ds-btn ghost" id="dsPwShow" style="margin:0;flex:1">Показать</button><button class="ds-btn ghost" id="dsPwCopy" style="margin:0;flex:1">Скопировать</button></div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px"><button class="ds-btn ghost" id="dsPwShow" style="margin:0;flex:1">👁 Показать</button><button class="ds-btn ghost" id="dsPwCopy" style="margin:0;flex:1">Скопировать</button></div>' +
           '<p class="ds-p" style="font-size:.8rem;margin-top:8px">Никому не сообщай пароль — с ним можно войти в твой аккаунт.</p>'
         : '<p class="ds-p" style="color:var(--warn,#E8A33D)">На этом устройстве пароль не сохранён (например, ты входил(а) здесь не в первый раз). Задай новый — он заменит старый на всех устройствах.</p>') +
       '<h4 style="margin:18px 0 6px;font-size:.9rem">Сменить пароль</h4>' +
@@ -280,7 +294,7 @@
       '<div class="ds-err" id="dsPErr"></div><button class="ds-btn" id="dsPGo">Сохранить новый пароль</button>');
     if(pw){
       var shown = false;
-      $("dsPwShow").onclick = function(){ shown = !shown; $("dsPwVal").textContent = shown ? pw : dots; this.textContent = shown ? "Скрыть" : "Показать"; };
+      $("dsPwShow").onclick = function(){ shown = !shown; $("dsPwVal").textContent = shown ? pw : dots; this.textContent = shown ? "🙈 Скрыть" : "👁 Показать"; };
       $("dsPwCopy").onclick = function(){ var b = this; (navigator.clipboard ? navigator.clipboard.writeText(pw) : Promise.reject()).then(function(){ b.textContent = "Скопировано"; setTimeout(function(){ b.textContent = "Скопировать"; }, 1500); }, function(){ toast("Не получилось скопировать"); }); };
     }
     $("dsPGo").onclick = async function(){
