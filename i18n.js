@@ -1,8 +1,8 @@
 /* =====================================================================
    Домашка — языки интерфейса.
    Русский (по умолчанию), English, 中文, हिन्दी, Kiswahili.
-   Переводятся кнопки, меню, настройки и подписи. Данные из расписания
-   (предметы, ФИО, аудитории, тексты заданий) остаются как есть.
+   Переводятся кнопки, меню, настройки и подписи. Названия частых предметов
+   и виды занятий тоже переводятся; ФИО и тексты заданий остаются как есть.
    Чтобы добавить фразу: новая строка [русский, en, zh, hi, sw].
    ===================================================================== */
 (function(){
@@ -264,11 +264,103 @@
     ["Сейчас: Осень","Now: Autumn","当前：秋季","अभी: शरद","Sasa: Majira ya kupukutika"]
   ];
 
-  var MAP = {};
+
+  // ---- предметы (названия с сайта вуза; неизвестные остаются по-русски) ----
+  var SUBJECTS = [
+    ["Высшая математика","Higher Mathematics","高等数学","उच्च गणित","Hisabati ya Juu"],
+    ["Математика","Mathematics","数学","गणित","Hisabati"],
+    ["Математический анализ","Calculus","数学分析","गणितीय विश्लेषण","Kalkulasi"],
+    ["Линейная алгебра","Linear Algebra","线性代数","रैखिक बीजगणित","Aljebra Mstari"],
+    ["Теория вероятностей и математическая статистика","Probability Theory and Statistics","概率论与数理统计","प्रायिकता सिद्धांत और गणितीय सांख्यिकी","Nadharia ya Uwezekano na Takwimu"],
+    ["Физика","Physics","物理","भौतिकी","Fizikia"],
+    ["Химия","Chemistry","化学","रसायन विज्ञान","Kemia"],
+    ["Информатика","Computer Science","计算机科学","कंप्यूटर विज्ञान","Sayansi ya Kompyuta"],
+    ["Программирование","Programming","程序设计","प्रोग्रामिंग","Upangaji Programu"],
+    ["Компьютерная графика","Computer Graphics","计算机图形学","कंप्यूटर ग्राफ़िक्स","Michoro ya Kompyuta"],
+    ["История России","History of Russia","俄罗斯历史","रूस का इतिहास","Historia ya Urusi"],
+    ["История","History","历史","इतिहास","Historia"],
+    ["Основы российской государственности","Foundations of Russian Statehood","俄罗斯国家制度基础","रूसी राज्यव्यवस्था की नींव","Misingi ya Utaifa wa Urusi"],
+    ["Философия","Philosophy","哲学","दर्शनशास्त्र","Falsafa"],
+    ["Культурология","Cultural Studies","文化学","संस्कृति अध्ययन","Masomo ya Utamaduni"],
+    ["Политология","Political Science","政治学","राजनीति विज्ञान","Sayansi ya Siasa"],
+    ["Социология","Sociology","社会学","समाजशास्त्र","Sosholojia"],
+    ["Психология","Psychology","心理学","मनोविज्ञान","Saikolojia"],
+    ["Правоведение","Law","法学","विधि","Sheria"],
+    ["Экономика","Economics","经济学","अर्थशास्त्र","Uchumi"],
+    ["Менеджмент","Management","管理学","प्रबंधन","Usimamizi"],
+    ["Маркетинг","Marketing","市场营销","विपणन","Masoko"],
+    ["Бухгалтерский учёт","Accounting","会计","लेखांकन","Uhasibu"],
+    ["Иностранный язык","Foreign Language","外语","विदेशी भाषा","Lugha ya Kigeni"],
+    ["Английский язык","English","英语","अंग्रेज़ी","Kiingereza"],
+    ["Русский язык и культура речи","Russian Language and Speech Culture","俄语与言语文化","रूसी भाषा और वाक् संस्कृति","Kirusi na Utamaduni wa Usemi"],
+    ["Русский язык как иностранный","Russian as a Foreign Language","对外俄语","विदेशी भाषा के रूप में रूसी","Kirusi kama Lugha ya Kigeni"],
+    ["Физическая культура и спорт","Physical Education and Sport","体育与运动","शारीरिक शिक्षा और खेल","Elimu ya Viungo na Michezo"],
+    ["Физическая культура","Physical Education","体育","शारीरिक शिक्षा","Elimu ya Viungo"],
+    ["Элективные дисциплины по физической культуре и спорту","Elective Physical Education","体育选修课","शारीरिक शिक्षा (वैकल्पिक)","Elimu ya Viungo (Hiari)"],
+    ["Безопасность жизнедеятельности","Life Safety","生命安全","जीवन सुरक्षा","Usalama wa Maisha"],
+    ["Экология","Ecology","生态学","पारिस्थितिकी","Ikolojia"],
+    ["Начертательная геометрия","Descriptive Geometry","画法几何","वर्णनात्मक ज्यामिति","Jiometri Elekezi"],
+    ["Инженерная графика","Engineering Graphics","工程制图","अभियांत्रिकी ग्राफ़िक्स","Michoro ya Uhandisi"],
+    ["Начертательная геометрия и инженерная графика","Descriptive Geometry and Engineering Graphics","画法几何与工程制图","वर्णनात्मक ज्यामिति और अभियांत्रिकी ग्राफ़िक्स","Jiometri Elekezi na Michoro ya Uhandisi"],
+    ["Черчение","Technical Drawing","制图","तकनीकी आरेखण","Uchoraji wa Kiufundi"],
+    ["Рисунок","Drawing","素描","रेखांकन","Kuchora"],
+    ["Живопись","Painting","绘画","चित्रकला","Uchoraji"],
+    ["Теоретическая механика","Theoretical Mechanics","理论力学","सैद्धांतिक यांत्रिकी","Mekaniki ya Nadharia"],
+    ["Техническая механика","Technical Mechanics","工程力学","तकनीकी यांत्रिकी","Mekaniki ya Kiufundi"],
+    ["Сопротивление материалов","Strength of Materials","材料力学","पदार्थों की सामर्थ्य","Uimara wa Vifaa"],
+    ["Строительная механика","Structural Mechanics","结构力学","संरचनात्मक यांत्रिकी","Mekaniki ya Miundo"],
+    ["Механика грунтов","Soil Mechanics","土力学","मृदा यांत्रिकी","Mekaniki ya Udongo"],
+    ["Механика жидкости и газа","Fluid Mechanics","流体力学","द्रव यांत्रिकी","Mekaniki ya Vimiminika"],
+    ["Гидравлика","Hydraulics","水力学","जलगतिकी","Haidroliki"],
+    ["Строительные материалы","Building Materials","建筑材料","निर्माण सामग्री","Vifaa vya Ujenzi"],
+    ["Материаловедение","Materials Science","材料科学","पदार्थ विज्ञान","Sayansi ya Vifaa"],
+    ["Строительная физика","Building Physics","建筑物理","भवन भौतिकी","Fizikia ya Majengo"],
+    ["Инженерная геодезия","Engineering Geodesy","工程测量","अभियांत्रिकी भूगणित","Upimaji wa Uhandisi"],
+    ["Геодезия","Geodesy","测量学","भूगणित","Upimaji Ardhi"],
+    ["Инженерная геология","Engineering Geology","工程地质","अभियांत्रिकी भूविज्ञान","Jiolojia ya Uhandisi"],
+    ["Основания и фундаменты","Bases and Foundations","地基与基础","आधार और नींव","Misingi na Nguzo"],
+    ["Архитектура","Architecture","建筑学","वास्तुकला","Usanifu Majengo"],
+    ["Архитектура зданий","Building Architecture","房屋建筑学","भवन वास्तुकला","Usanifu wa Majengo"],
+    ["Архитектурное проектирование","Architectural Design","建筑设计","वास्तु डिज़ाइन","Usanifu wa Kubuni"],
+    ["Градостроительство","Urban Planning","城市规划","नगर नियोजन","Mipango Miji"],
+    ["Строительные конструкции","Building Structures","建筑结构","भवन संरचनाएँ","Miundo ya Majengo"],
+    ["Железобетонные конструкции","Reinforced Concrete Structures","钢筋混凝土结构","प्रबलित कंक्रीट संरचनाएँ","Miundo ya Zege Iliyoimarishwa"],
+    ["Железобетонные и каменные конструкции","Reinforced Concrete and Masonry Structures","钢筋混凝土与砌体结构","प्रबलित कंक्रीट और चिनाई संरचनाएँ","Miundo ya Zege na Mawe"],
+    ["Металлические конструкции","Steel Structures","钢结构","इस्पात संरचनाएँ","Miundo ya Chuma"],
+    ["Конструкции из дерева и пластмасс","Timber and Plastic Structures","木结构与塑料结构","लकड़ी और प्लास्टिक संरचनाएँ","Miundo ya Mbao na Plastiki"],
+    ["Основы архитектуры и строительных конструкций","Fundamentals of Architecture and Building Structures","建筑与结构基础","वास्तुकला और भवन संरचनाओं के मूल सिद्धांत","Misingi ya Usanifu na Miundo ya Majengo"],
+    ["Технология строительного производства","Construction Technology","建筑施工技术","निर्माण प्रौद्योगिकी","Teknolojia ya Ujenzi"],
+    ["Технологические процессы в строительстве","Construction Processes","建筑工艺过程","निर्माण में तकनीकी प्रक्रियाएँ","Michakato ya Ujenzi"],
+    ["Организация строительного производства","Construction Management","建筑施工组织","निर्माण प्रबंधन","Usimamizi wa Ujenzi"],
+    ["Экономика строительства","Construction Economics","建筑经济","निर्माण अर्थशास्त्र","Uchumi wa Ujenzi"],
+    ["Строительные машины","Construction Machinery","建筑机械","निर्माण मशीनें","Mitambo ya Ujenzi"],
+    ["Теплогазоснабжение и вентиляция","Heating, Gas Supply and Ventilation","供热供气与通风","ताप, गैस आपूर्ति और वेंटिलेशन","Joto, Gesi na Uingizaji Hewa"],
+    ["Водоснабжение и водоотведение","Water Supply and Sewerage","给水排水","जल आपूर्ति और जल निकासी","Usambazaji Maji na Majitaka"],
+    ["Электротехника","Electrical Engineering","电工学","विद्युत अभियांत्रिकी","Uhandisi wa Umeme"],
+    ["Электроснабжение","Power Supply","供电","विद्युत आपूर्ति","Usambazaji wa Umeme"],
+    ["Метрология, стандартизация и сертификация","Metrology, Standardization and Certification","计量、标准化与认证","मापिकी, मानकीकरण और प्रमाणन","Metrolojia, Usanifishaji na Uthibitishaji"],
+    ["Обследование и испытание зданий и сооружений","Inspection and Testing of Buildings","建筑物检测与试验","भवनों का निरीक्षण और परीक्षण","Ukaguzi na Upimaji wa Majengo"],
+    ["Введение в профессию","Introduction to the Profession","专业导论","पेशे का परिचय","Utangulizi wa Taaluma"],
+    ["Введение в специальность","Introduction to the Specialty","专业导论","विशेषज्ञता का परिचय","Utangulizi wa Utaalamu"],
+    ["Учебная практика","Training Practice","教学实习","प्रशिक्षण अभ्यास","Mafunzo kwa Vitendo"],
+    ["Производственная практика","Industrial Placement","生产实习","औद्योगिक प्रशिक्षण","Mafunzo Kazini"],
+    // ---- вид занятия ----
+    ["Лекция","Lecture","讲座","व्याख्यान","Mhadhara"],
+    ["Практика","Practice","实践课","अभ्यास","Mazoezi"],
+    ["Лабораторная","Lab","实验课","प्रयोगशाला","Maabara"],
+    ["Семинар","Seminar","研讨课","संगोष्ठी","Semina"],
+    ["Лек.","Lec.","讲","व्या.","Mhad."],
+    ["Пр.","Prac.","练","अभ्या.","Maz."],
+    ["Лаб.","Lab","实验","प्रयो.","Maab."],
+    ["Сем.","Sem.","研","संगो.","Sem."]
+  ];
+  var TYPE_IN = { "лекция":"Лекция", "лек.":"Лекция", "практика":"Практика", "пр.":"Практика", "лаб.":"Лабораторная", "лабораторная":"Лабораторная", "семинар":"Семинар", "сем.":"Семинар" };
+  var MAP = {}, SUBJ = {};
   function lang(){ try{ return localStorage.getItem("domashka_lang") || "ru"; }catch(e){ return "ru"; } }
   var L = lang();
   if(L !== "ru" && COL[L]){
     ROWS.forEach(function(r){ if(r[COL[L]]) MAP[r[0]] = r[COL[L]]; });
+    SUBJECTS.forEach(function(r){ if(r[COL[L]]){ MAP[r[0]] = r[COL[L]]; SUBJ[r[0].toLowerCase().replace(/ё/g, "е")] = r[COL[L]]; } });
   }
   // Составные фразы: «Пара 2», «2 пара», «1 неделя», «Пятница · 1 нед.»
   var WORD = {};
@@ -281,12 +373,27 @@
   };
   var WEEK_SHORT = { en:"wk", zh:"周", hi:"सप्ताह", sw:"wiki" };
 
+  var AUD = { en:"room", zh:"室", hi:"कक्ष", sw:"chumba" };
+  var GR = { en:"gr.", zh:"组", hi:"समूह", sw:"kikundi" };
   var DUE = { en:"due:", zh:"截止：", hi:"जमा करें:", sw:"wasilisha:" };
   function tr(v){
     var t = v.trim();
     if(!t || !/[А-Яа-яЁё]/.test(t)) return null;
     if(/^сдать: /.test(t) && DUE[L]) return v.replace("сдать:", DUE[L]);
     if(MAP[t]) return v.replace(t, MAP[t]);
+    var lk = t.toLowerCase().replace(/ё/g, "е");
+    if(SUBJ[lk]) return v.replace(t, SUBJ[lk]);
+    var sm = /^(.+?)\s*\((лекция|практика|лаб\.|лабораторная|семинар|сем\.)\)$/i.exec(t);
+    if(sm){
+      var base = SUBJ[sm[1].toLowerCase().replace(/ё/g, "е")] || sm[1], ty = TYPE_IN[sm[2].toLowerCase()];
+      return v.replace(t, base + " (" + ((ty && MAP[ty]) || sm[2]) + ")");
+    }
+    if(/(Лек\.|Пр\.|Лаб\.|Сем\.)\s*\/|ауд\.|\sгр\./.test(t)){
+      var o2 = t.replace(/(^|[\s(,·])(Лек\.|Пр\.|Лаб\.|Сем\.)\s*\//g, function(_, a, b){ return a + (MAP[b] || b) + " /"; })
+                .replace(/ ауд\.?/g, AUD[L] ? " " + AUD[L] : " ауд.")
+                .replace(/ гр\./g, GR[L] ? " " + GR[L] : " гр.");
+      if(o2 !== t) return v.replace(t, o2);
+    }
     var m = /^(Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье) · (\d) нед\.$/.exec(t);
     if(m && WORD[m[1]]) return v.replace(t, WORD[m[1]] + " · " + m[2] + " " + (WEEK_SHORT[L] || ""));
     var ps = PATTERNS[L] || [];

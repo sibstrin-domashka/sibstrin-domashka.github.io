@@ -614,9 +614,9 @@
 
   /* ---------------- Подписка ---------------- */
   function fmtD(iso){ var d = new Date(iso); return String(d.getDate()).padStart(2,"0") + "." + String(d.getMonth()+1).padStart(2,"0") + "." + d.getFullYear(); }
-  var REASON = { group_paid:"Оплачено группой", paid:"Оплаченная подписка", trial:"Пробный период", group_trial:"Пробный месяц группы", free:"Бесплатный доступ (приглашения или промокод)", teacher:"Для преподавателей — бесплатно", owner:"Владелец" };
+  var REASON = { group_paid:"Оплачено группой", paid:"Оплаченная подписка", trial:"Пробный период", group_trial:"Пробный месяц группы", free:"Бесплатный доступ по промокоду", group_free:"Бесплатный доступ для группы", teacher:"Для преподавателей — бесплатно", owner:"Владелец" };
   async function subscription(){
-    var ov = sheet("dsSub", "Подписка группы", '<p class="ds-p">Загрузка...</p>');
+    var ov = sheet("dsSub", "Моя подписка", '<p class="ds-p">Загрузка...</p>');
     var body = ov.querySelector(".ds-body");
     var a = await opts.sb.rpc("my_access");
     var st = (!a.error && a.data && a.data[0]) || null;
@@ -630,9 +630,9 @@
         (st.has_access ? "<b>Доступ открыт " + (forever ? "навсегда" : "до " + fmtD(st.access_until)) + '</b><div class="ds-meta">' + esc(REASON[st.reason] || "") + "</div>"
                        : "<b>Доступ не оплачен</b><div class=\"ds-meta\">" + (st.access_until ? "Закончился " + fmtD(st.access_until) : "Подписка ещё не оформлена") + "</div>") +
         (st.group_paid_until && st.reason !== "group_paid" && new Date(st.group_paid_until) > new Date() ? '<div class="ds-meta">Оплачено до ' + fmtD(st.group_paid_until) + "</div>" : "") + "</div>";
-      h += '<p class="ds-p">Подписка оформляется сразу на всю группу: один человек оплачивает — доступ открывается у всех.</p>';
-      if(!window.DOMASHKA_NATIVE_IOS && st.group_id){
-        h += '<a class="ds-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box" href="pay.html?g=' + encodeURIComponent(st.group_id) + '" target="_blank" rel="noopener">' + (st.has_access ? "Продлить для группы" : "Оплатить для группы") + "</a>";
+      h += '<p class="ds-p">Подписка личная: оплачиваешь за себя — доступ открывается тебе.</p>';
+      if(!window.DOMASHKA_NATIVE_IOS){
+        h += '<a class="ds-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box" href="pay.html" target="_blank" rel="noopener">' + (st.has_access ? "Продлить подписку" : "Оформить подписку") + "</a>";
         h += '<p class="ds-p" style="font-size:.8rem">Там же можно ввести промокод.</p>';
       }
     }

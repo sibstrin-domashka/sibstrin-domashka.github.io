@@ -256,6 +256,11 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
 .chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
 .share-row{display:flex;gap:6px;flex-wrap:wrap}
+.lt-badge{display:inline-block;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;line-height:1.5;vertical-align:1px;background:rgba(255,255,255,.1);color:var(--text-primary)}
+.lt-badge.lt-лек{background:rgba(120,170,255,.18);color:#9EC2FF}
+.lt-badge.lt-пр{background:rgba(91,208,168,.18);color:#7FE0BC}
+.lt-badge.lt-лаб{background:rgba(240,180,80,.18);color:#F3C77A}
+.lt-badge.lt-сем{background:rgba(210,140,255,.18);color:#D9A8FF}
 .sched-notice{max-width:760px;margin:0 auto 12px;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:rgba(91,208,168,.12);border:1px solid rgba(91,208,168,.4);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .sched-notice.problem{background:rgba(232,135,30,.14);border-color:rgba(232,135,30,.45)}
 .sched-notice .sn-ic{font-size:1.5rem;line-height:1;flex-shrink:0}
@@ -418,9 +423,9 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
 <div id="payScreen" class="wait-screen" style="display:none;z-index:190">
   <div class="wait-card">
     <div style="font-size:2.2rem">💳</div>
-    <h3>Доступ группы закончился</h3>
-    <p id="payText">Подписка оформляется на всю группу: один человек оплачивает — доступ открывается у всех.</p>
-    <a class="btn-blue" id="payBuy" href="pay.html" target="_blank" rel="noopener" style="display:block;padding:12px;text-decoration:none;border-radius:10px">Оплатить для группы</a>
+    <h3>Доступ закончился</h3>
+    <p id="payText">Пробный период или подписка закончились. Оформи подписку — доступ откроется сразу.</p>
+    <a class="btn-blue" id="payBuy" href="pay.html" target="_blank" rel="noopener" style="display:block;padding:12px;text-decoration:none;border-radius:10px">Оформить подписку</a>
     <button class="btn-outline btn-sm" id="payKey" style="margin-top:10px;width:100%">Проверить ещё раз</button>
     <button class="btn-outline btn-sm" id="payInvite" style="margin-top:10px;width:100%">🎁 Бесплатный семестр за приглашения</button>
     <button class="btn-outline btn-sm" id="payLogout" style="margin-top:10px">Выйти</button>
@@ -530,8 +535,8 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     var st=(!r.error && r.data && r.data[0]) || null;
     var scr=document.getElementById("payScreen");
     if(!st || st.has_access){ scr.style.display="none"; return; }
-    if(st.group_id) document.getElementById("payBuy").href="pay.html?g="+encodeURIComponent(st.group_id);
-    if(window.DOMASHKA_NATIVE_IOS){ document.getElementById("payBuy").style.display="none"; document.getElementById("payText").textContent="Доступ для вашей группы сейчас не активен."; }
+    document.getElementById("payBuy").href="pay.html";
+    if(window.DOMASHKA_NATIVE_IOS){ document.getElementById("payBuy").style.display="none"; document.getElementById("payText").textContent="Доступ сейчас не активен."; }
     scr.style.display="flex";
   }
   function handleSettingsParam(){
@@ -654,10 +659,12 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
   // "Лек./373 ауд." -> {type:"Лекция", number:"373"}; falls back to showing
   // the raw string as the room number if it doesn't match this shape.
   function parseRoomType(room){
-    var m=/^(Лек|Пр|Лаб)\.?\s*\/\s*(.+?)\s*ауд\.?$/i.exec((room||"").trim());
-    if(!m) return {type:"", number:(room||"").trim()};
-    var typeMap={"лек":"Лекция","пр":"Практика","лаб":"Лабораторная"};
-    return {type:typeMap[m[1].toLowerCase()]||m[1], number:m[2].trim()};
+    var m=/^(Лек|Пр|Лаб|Сем)\.?\s*\/\s*(.+?)\s*(ауд\.?)?$/i.exec((room||"").trim());
+    if(!m) return {type:"", short:"", key:"", number:(room||"").trim()};
+    var k=m[1].toLowerCase();
+    var typeMap={"лек":"Лекция","пр":"Практика","лаб":"Лабораторная","сем":"Семинар"};
+    var shortMap={"лек":"Лек.","пр":"Пр.","лаб":"Лаб.","сем":"Сем."};
+    return {type:typeMap[k]||m[1], short:shortMap[k]||m[1], key:k, number:m[2].trim()};
   }
 
   function statusClass(part){
@@ -1313,8 +1320,8 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
         if(chg) html+='<div class="chg-line '+chg.kind+'">⚠ '+esc(changeText(chg))+(chg.note?' · '+esc(chg.note):'')+'</div>';
         var roomInfo=parseRoomType(part.room);
         var metaBits=[];
-        if(roomInfo.number) metaBits.push(esc(roomInfo.number));
-        if(roomInfo.type) metaBits.push(esc(roomInfo.type));
+        if(roomInfo.number) metaBits.push('<span>'+esc(roomInfo.number)+'</span>');
+        if(roomInfo.type) metaBits.push('<span class="lt-badge lt-'+roomInfo.key+'">'+esc(roomInfo.type)+'</span>');
         if(metaBits.length) html+='<div class="dv-meta">'+metaBits.join(' · ')+'</div>';
         html+='</div></div>';
       }
@@ -1393,7 +1400,8 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
               html+='<div class="s-subj">'+(part.subject?esc(part.subject):'<span style="color:var(--text-secondary)">—</span>')+'</div>';
               html+='<div class="s-meta">';
               var spRoom=parseRoomType(part.room);
-              if(spRoom.number) html+=esc(spRoom.number);
+              if(spRoom.short) html+='<span class="lt-badge lt-'+spRoom.key+'">'+spRoom.short+'</span> ';
+              if(spRoom.number) html+='<span>'+esc(spRoom.number)+'</span>';
               html+='</div></div>';
             }
             html+='</td>';
@@ -1410,7 +1418,8 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
             html+='<div class="s-subj">'+(part.subject?esc(part.subject):'<span style="color:var(--text-secondary);font-weight:400">—</span>')+'</div>';
             html+='<div class="s-meta">';
             var roomT=parseRoomType(part.room);
-            if(roomT.number) html+=esc(roomT.number);
+            if(roomT.short) html+='<span class="lt-badge lt-'+roomT.key+'">'+roomT.short+'</span> ';
+            if(roomT.number) html+='<span>'+esc(roomT.number)+'</span>';
             html+='</div></td>';
           }
         }
@@ -2781,8 +2790,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       { icon:"🗓️", title:"Расписание сессий", sub:"Зачёты и экзамены", onClick:openSessions },
       { icon:"👨‍🏫", title:"Отзывы о преподавателях", sub:"Оценки и отзывы студентов", onClick:function(){ if(showingLit) document.getElementById("litBtn").click(); if(!showingTeachers) document.getElementById("teachersBtn").click(); DomashkaTabbar.setActive("more"); window.scrollTo(0,0); } }
     ];
-    if(myMembership && myMembership.join_code) items.unshift({ icon:"👥", title:"Пригласить в группу", sub:"Ссылка и QR для одногруппников, заявки", badge:(myMembership.pending_count||0)+resetCount, onClick:openGroupPanel });
-    else items.unshift({ icon:"👥", title:"Пригласить", sub:"Ссылка и QR для студентов", onClick:openInviteGeneric });
+    // Приглашать в группу больше не нужно: каждый регистрируется сам.
     items.push({ icon:"💡", title:"Предложить идею", sub:"Что добавить или улучшить", onClick:DomashkaSettings.idea });
     items.push({ icon:"🐞", title:"Сообщить о проблеме", onClick:DomashkaSettings.problem });
     items.push({ icon:"📨", title:"Мои обращения", sub:"Ответы владельца", badge:moreReplies||0, onClick:DomashkaSettings.mine });
@@ -2796,7 +2804,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     moreReplies=await DomashkaSettings.unreadReplies();
     ownerOpen=myIsOwner ? await DomashkaSettings.inboxCount() : 0;
     try{ var rr=await sb.rpc("list_password_resets"); resetCount=(rr.data||[]).length; }catch(e){ resetCount=0; }
-    DomashkaTabbar.setBadge("more", (myMembership&&myMembership.pending_count||0)+resetCount+moreReplies+ownerOpen);
+    DomashkaTabbar.setBadge("more", resetCount+moreReplies+ownerOpen);
   }
   if(window.DomashkaTabbar) DomashkaTabbar.mount([
     { key:"home", label:"День", icon:"calendar", onClick:function(){ closeSideScreens(); if(viewMode!=="day"){ viewMode="day"; dayViewAbsIndex=null; try{localStorage.setItem("domashka_view_v1",viewMode);}catch(e){} render(); } DomashkaTabbar.setActive("home"); window.scrollTo(0,0); } },

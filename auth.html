@@ -149,9 +149,9 @@ input::placeholder{color:rgba(218,241,222,.4)}
       <button class="btn btn-sec" id="addGroupBtn" type="button">Добавить мою группу</button>
       <div class="hint">Добавляй, только если это точно номер твоей группы в НГАСУ. Расписание мы подгрузим с сайта университета в течение 30 минут.</div>
     </div>
-    <label>Фамилия Имя Отчество</label>
-    <input type="text" id="fullName" placeholder="Иванов Иван Иванович">
-    <div class="hint">Вводи так же, как в журнале. Если тебя ещё нет в списке группы, одногруппники подтвердят твою заявку.</div>
+    <label>Фамилия и имя</label>
+    <input type="text" id="fullName" placeholder="Иванов Иван" autocomplete="name">
+    <div class="hint">Без отчества. Если ты уже регистрировался(ась) — введи так же, и мы попросим пароль.</div>
     <button class="btn" id="findBtn">Далее</button>
     <div class="msg" id="msg"></div>
   </div>
@@ -373,7 +373,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       document.getElementById("addGroupBox").style.display = "block";
       return;
     }
-    if(!name || name.split(/\s+/).length < 2){ showMsg("Введи полное ФИО, как в журнале"); return; }
+    if(!name || name.split(/\s+/).length < 2){ showMsg("Введи фамилию и имя"); return; }
 
     var btn = document.getElementById("findBtn");
     btn.disabled = true; btn.textContent = "Проверяем...";
@@ -386,7 +386,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
         var em = res.error.message || "";
         if(em.indexOf("rejected") !== -1) showMsg("Заявку с этим именем отклонили. Если это ошибка — напиши старосте.");
         else if(em.indexOf("too_many_requests") !== -1) showMsg("В группе слишком много неподтверждённых заявок. Попроси одногруппников разобрать их.");
-        else if(em.indexOf("need_full_name") !== -1) showMsg("Введи полное ФИО, как в журнале");
+        else if(em.indexOf("need_full_name") !== -1) showMsg("Введи фамилию и имя");
         else showMsg("Ошибка: " + em);
         return;
       }
@@ -395,7 +395,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
         showMsg("Не нашли тебя в списке этой группы. Проверь имя (как в журнале) и группу, или обратись к старосте.");
         return;
       }
-      pendingGroupId = groupId; pendingName = name;
+      pendingGroupId = groupId; pendingName = row.full_name || name;
       pendingEmail = row.email; pendingIsClaimed = row.is_claimed;
       pendingStatus = row.status || "approved";
       document.getElementById("pendingNote").style.display = (pendingStatus === "pending" && !pendingIsClaimed) ? "block" : "none";
@@ -643,11 +643,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       await claimRef(sb);
       var mem = await sb.rpc("my_membership");
       var m0 = (!mem.error && mem.data && mem.data[0]) || null;
-      if(m0 && m0.is_starosta && m0.join_code){
-        showFirstMember(m0);
-      } else {
-        setTimeout(goToApp, 1800);
-      }
+      setTimeout(goToApp, 1200);
     } catch(e){
       showPassMsg("Что-то пошло не так: " + e.message);
     } finally {
@@ -789,6 +785,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
 
   function goToApp(){
     var nx = (new URLSearchParams(window.location.search).get("next") || "").replace(/[^a-z=]/g, "");
+    if(nx === "pay"){ window.location.href = "pay.html"; return; }
     window.location.href = "index_3_updated.html" + (/^settings=[a-z]+$/.test(nx) ? "?" + nx : "");
   }
 
