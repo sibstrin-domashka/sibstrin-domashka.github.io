@@ -174,6 +174,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       <input type="password" id="passLogin" placeholder="Твой пароль" autocomplete="current-password">
       <label class="consent"><input type="checkbox" id="remember2" checked><span>Запомнить меня на этом устройстве и больше не спрашивать пароль</span></label>
       <button class="switch" id="forgotBtn" type="button">Забыл(а) пароль?</button>
+      <button class="btn btn-sec" id="noMailBtn" type="button" style="display:none">Нет доступа к почте НГАСУ?</button>
     </div>
     <button class="btn" id="passSubmitBtn">Войти</button>
     <div class="msg" id="passMsg"></div>
@@ -183,7 +184,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
   <div id="resetScreen" class="screen">
     <div class="whoami" id="resetWho"></div>
     <div id="resetMail" style="display:none">
-      <div class="first-box" style="text-align:left">📧 <b>Код отправлен на твою почту НГАСУ</b> <span id="resetMailAddr"></span>.<br>Открой почту (проверь и «Спам») и введи 6 цифр из письма. Код действует 15 минут.</div>
+      <div class="first-box" style="text-align:left">📧 <b>Мы отправили код на твою почту НГАСУ:</b><br><b id="resetMailAddr" style="font-size:1.05rem"></b><br>Открой почту (проверь и «Спам») и введи 6 цифр из письма. Код действует 15 минут.</div>
       <label>Код из письма</label>
       <input type="text" id="rcode" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" style="letter-spacing:6px;font-size:1.3rem;text-align:center">
       <label>Новый пароль</label>
@@ -242,6 +243,32 @@ input::placeholder{color:rgba(218,241,222,.4)}
   var SUPABASE_URL = "https://wsrrqwvemfliwzsqlkvg.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzcnJxd3ZlbWZsaXd6c3Fsa3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMDc1NDYsImV4cCI6MjEwNDc4MzU0Nn0.mcnzJ6Fh5eTCJSYXQ6rMkBHAbL5JPIC1UId1DlRfuDY";
   var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Функция писем в Supabase. Её «адрес» (slug) мог получиться не teacher-code,
+  // а случайным (например smart-processor) — пробуем по очереди и запоминаем рабочий.
+  var MAIL_FNS = ((window.DOMASHKA_CONFIG && DOMASHKA_CONFIG.mailFunction) ? [DOMASHKA_CONFIG.mailFunction] : []).concat(["teacher-code", "smart-processor"]);
+  async function callMailFn(body, token){
+    var names = MAIL_FNS.slice();
+    try{ var known = localStorage.getItem("domashka_mail_fn"); if(known) names.unshift(known); }catch(e){}
+    names = names.filter(function(n, i){ return names.indexOf(n) === i; });
+    var last = { status: "network_error" };
+    for(var i = 0; i < names.length; i++){
+      try{
+        var f = await fetch(SUPABASE_URL + "/functions/v1/" + names[i], { method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + (token || SUPABASE_ANON_KEY) },
+          body: JSON.stringify(body) });
+        if(f.status === 404){ last = { status: "no_function" }; continue; }
+        var j = await f.json().catch(function(){ return null; });
+        try{ localStorage.setItem("domashka_mail_fn", names[i]); }catch(e){}
+        return j || { status: "error" };
+      }catch(e){ last = { status: "network_error" }; }
+    }
+    return last;
+  }
+  function mailErrText(st){
+    return st === "no_function" ? " (код ошибки: функция писем не найдена)"
+         : st === "send_failed" ? " (код ошибки: почтовый сервер не принял письмо)"
+         : st === "network_error" ? " (нет связи с сервером)" : (st ? " (код ошибки: " + st + ")" : "");
+  }
 
   function showScreen(id){
     document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); });
@@ -468,16 +495,14 @@ input::placeholder{color:rgba(218,241,222,.4)}
     btn.disabled = true;
     var res = null;
     try{
-      var f = await fetch(SUPABASE_URL + "/functions/v1/teacher-code", { method:"POST",
-        headers:{ "Content-Type":"application/json", "apikey":SUPABASE_ANON_KEY, "Authorization":"Bearer " + SUPABASE_ANON_KEY },
-        body: JSON.stringify({ action:"student_reset", group_id: pendingGroupId, full_name: pendingName }) });
-      res = await f.json().catch(function(){ return null; });
+      res = await callMailFn({ action:"student_reset", group_id: pendingGroupId, full_name: pendingName });
     }catch(e){}
     btn.disabled = false;
     var st = res && res.status;
     if(st === "ok"){
       document.getElementById("resetWho").textContent = pendingName;
-      document.getElementById("resetMailAddr").textContent = res.email ? "(" + res.email + ")" : "";
+      document.getElementById("resetMailAddr").textContent = res.email || "";
+      document.getElementById("noMailBtn").style.display = "none";
       document.getElementById("resetMail").style.display = "block";
       document.getElementById("resetWait").style.display = "none";
       document.getElementById("resetNew").style.display = "none";
@@ -489,11 +514,13 @@ input::placeholder{color:rgba(218,241,222,.4)}
     var t = st === "too_often" ? "Код уже отправлен недавно. Подожди минуту и проверь почту (и «Спам»)."
           : st === "not_found" ? "Не нашли такого студента в этой группе."
           : st === "busy" ? "Сейчас слишком много запросов. Попробуй через несколько минут."
-          : "Не получилось отправить письмо. Попробуй позже или нажми «Нет доступа к почте НГАСУ?».";
+          : "Не получилось отправить письмо. Попробуй позже или нажми «Нет доступа к почте НГАСУ?»." + mailErrText(st);
     if(document.getElementById("resetScreen").classList.contains("active")) resetMsg(t); else showPassMsg(t);
+    if(st !== "too_often" && st !== "not_found") document.getElementById("noMailBtn").style.display = "block";
     return false;
   }
   document.getElementById("forgotBtn").onclick = function(){ sendResetMail(this); };
+  document.getElementById("noMailBtn").onclick = function(){ requestOwnerReset(this); };
   document.getElementById("resetResend").onclick = function(){ sendResetMail(this).then(function(ok){ if(ok) resetMsg("Новый код отправлен", true); }); };
   document.getElementById("resetNoMail").onclick = function(){
     document.getElementById("resetMail").style.display = "none";
@@ -706,12 +733,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
     btn.disabled = true; btn.textContent = "Отправляем...";
     var res = null;
     try{
-      var r = await fetch(SUPABASE_URL + "/functions/v1/teacher-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
-        body: JSON.stringify({ full_name: name })
-      });
-      res = await r.json().catch(function(){ return null; });
+      res = await callMailFn({ full_name: name });
     }catch(e){ res = null; }
     btn.disabled = false; btn.textContent = "Получить код на почту";
     var st = res && res.status;
@@ -730,7 +752,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
     } else if(st === "bad_name"){
       tMsg("tSendMsg", "Введите фамилию, имя и отчество полностью");
     } else {
-      tMsg("tSendMsg", "Не получилось отправить письмо. Попробуйте ещё раз через минуту.");
+      tMsg("tSendMsg", "Не получилось отправить письмо. Попробуйте ещё раз через минуту." + mailErrText(st));
     }
   };
   function guessMail(name){

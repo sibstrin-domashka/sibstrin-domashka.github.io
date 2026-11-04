@@ -591,8 +591,14 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
       var sess=(await sb.auth.getSession()).data.session;
       var res=null;
       try{
-        var f=await fetch(SUPABASE_URL+"/functions/v1/teacher-code",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+(sess?sess.access_token:SUPABASE_ANON_KEY)},body:JSON.stringify({action:"approve",request_id:id,email:mail})});
-        res=await f.json().catch(function(){ return null; });
+        var names=["teacher-code","smart-processor"]; try{ var kn=localStorage.getItem("domashka_mail_fn"); if(kn) names.unshift(kn); }catch(e){}
+        for(var ni=0; ni<names.length; ni++){
+          var f=await fetch(SUPABASE_URL+"/functions/v1/"+names[ni],{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+(sess?sess.access_token:SUPABASE_ANON_KEY)},body:JSON.stringify({action:"approve",request_id:id,email:mail})});
+          if(f.status===404){ res={status:"no_function",message:"функция писем не найдена"}; continue; }
+          res=await f.json().catch(function(){ return null; });
+          try{ localStorage.setItem("domashka_mail_fn", names[ni]); }catch(e){}
+          break;
+        }
       }catch(e){}
       if(res && res.status==="ok"){ await loadTeacherRequests(); alertBox("✅ "+res.full_name+" добавлен(а) в реестр, письмо с кодом отправлено на "+res.email+".", true); }
       else if(res && res.status==="send_failed"){ await loadTeacherRequests(); alertBox("Преподаватель добавлен, но письмо не ушло (проверь почту в настройках функции). Код: "+res.code+" — можно отправить вручную на "+res.email+"."); }
