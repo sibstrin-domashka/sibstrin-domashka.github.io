@@ -167,7 +167,9 @@
 
     h += '<div class="ds-sec"><h4>Аккаунт</h4><div class="ds-list">';
     if(opts.onEditProfile) h += row({ id:"dsEdit", icon:"👤", title:"Имя и фото" });
-    if(opts.canChangePassword !== false) h += row({ id:"dsPass", icon:"🔑", title:"Сменить пароль" });
+    if(opts.canChangePassword !== false) h += isStudent
+      ? row({ id:"dsPass", icon:"🔑", title:"Пароль для входа", sub:"Посмотреть или сменить — для входа с другого устройства" })
+      : row({ id:"dsPass", icon:"🔑", title:"Сменить пароль" });
     h += row({ id:"dsLogout", icon:"🚪", title:"Выйти из аккаунта" });
     h += "</div></div>";
 
@@ -242,7 +244,10 @@
   }
 
   /* ---------------- Пароль ---------------- */
-  function openPassword(){
+  async function myId(){ try{ var u = await opts.sb.auth.getUser(); return u.data && u.data.user && u.data.user.id; }catch(e){ return null; } }
+  function storedPw(uid){ try{ return uid ? localStorage.getItem("domashka_pw_" + uid) : null; }catch(e){ return null; } }
+  async function openPassword(){
+    if(opts.role === "student") return openStudentPassword();
     sheet("dsSub", "Сменить пароль",
       '<label class="ds-lbl">Новый пароль</label><input class="ds-in" type="password" id="dsP1" autocomplete="new-password" placeholder="Минимум 6 символов">' +
       '<label class="ds-lbl">Повтори</label><input class="ds-in" type="password" id="dsP2" autocomplete="new-password">' +
@@ -255,6 +260,37 @@
       var r = await opts.sb.auth.updateUser({ password:a });
       this.disabled = false;
       if(r.error){ e.textContent = "Не получилось: " + r.error.message; return; }
+      close("dsSub"); toast("Пароль изменён");
+    };
+  }
+
+  // Студент: пароль создаётся сам при регистрации и хранится на устройстве.
+  async function openStudentPassword(){
+    var uid = await myId(), pw = storedPw(uid);
+    var dots = pw ? pw.replace(/[^-]/g, "•") : "";
+    sheet("dsSub", "Пароль для входа",
+      '<p class="ds-p">Нужен, только чтобы войти с <b>другого</b> телефона или компьютера: там выбери свою группу, ФИО и введи этот пароль. На этом устройстве вход уже запомнен.</p>' +
+      (pw
+        ? '<div class="ds-in" id="dsPwBox" style="font-family:monospace;font-size:1.15rem;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="dsPwVal">' + dots + '</span></div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px"><button class="ds-btn ghost" id="dsPwShow" style="margin:0;flex:1">Показать</button><button class="ds-btn ghost" id="dsPwCopy" style="margin:0;flex:1">Скопировать</button></div>' +
+          '<p class="ds-p" style="font-size:.8rem;margin-top:8px">Никому не сообщай пароль — с ним можно войти в твой аккаунт.</p>'
+        : '<p class="ds-p" style="color:var(--warn,#E8A33D)">На этом устройстве пароль не сохранён (например, ты входил(а) здесь не в первый раз). Задай новый — он заменит старый на всех устройствах.</p>') +
+      '<h4 style="margin:18px 0 6px;font-size:.9rem">Сменить пароль</h4>' +
+      '<label class="ds-lbl">Новый пароль</label><input class="ds-in" type="password" id="dsP1" autocomplete="new-password" placeholder="Минимум 6 символов">' +
+      '<div class="ds-err" id="dsPErr"></div><button class="ds-btn" id="dsPGo">Сохранить новый пароль</button>');
+    if(pw){
+      var shown = false;
+      $("dsPwShow").onclick = function(){ shown = !shown; $("dsPwVal").textContent = shown ? pw : dots; this.textContent = shown ? "Скрыть" : "Показать"; };
+      $("dsPwCopy").onclick = function(){ var b = this; (navigator.clipboard ? navigator.clipboard.writeText(pw) : Promise.reject()).then(function(){ b.textContent = "Скопировано"; setTimeout(function(){ b.textContent = "Скопировать"; }, 1500); }, function(){ toast("Не получилось скопировать"); }); };
+    }
+    $("dsPGo").onclick = async function(){
+      var a = $("dsP1").value, e = $("dsPErr");
+      if(a.length < 6){ e.textContent = "Минимум 6 символов"; return; }
+      this.disabled = true;
+      var r = await opts.sb.auth.updateUser({ password:a });
+      this.disabled = false;
+      if(r.error){ e.textContent = "Не получилось: " + r.error.message; return; }
+      try{ if(uid) localStorage.setItem("domashka_pw_" + uid, a); }catch(x){}
       close("dsSub"); toast("Пароль изменён");
     };
   }
@@ -290,6 +326,10 @@
       '<label class="ds-lbl">Напиши слово УДАЛИТЬ</label><input class="ds-in" id="dsDWord" autocomplete="off" placeholder="УДАЛИТЬ">' +
       '<div class="ds-err" id="dsDErr"></div>' +
       '<button class="ds-btn red" id="dsDGo">Удалить навсегда</button><button class="ds-btn ghost" id="dsDNo">Отмена</button>');
+    if(opts.role === "student") myId().then(function(uid){
+      var pw = storedPw(uid), inp = $("dsDPass");
+      if(pw && inp){ inp.value = pw; inp.style.display = "none"; if(inp.previousElementSibling) inp.previousElementSibling.style.display = "none"; }
+    });
     $("dsDNo").onclick = function(){ close("dsSub"); };
     $("dsDGo").onclick = async function(){
       var err = $("dsDErr"), btn = this, sb = opts.sb;

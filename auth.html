@@ -86,6 +86,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
 .btn.btn-sec{background:transparent;color:#9FE3BE;border:1.5px solid rgba(159,227,190,.55);margin-top:10px}
 .btn.btn-sec:disabled{opacity:.6}
 .switch.pulse{color:#fff;font-weight:700;text-decoration:underline}
+.add-group{margin-top:10px;padding:12px;border-radius:12px;background:rgba(159,227,190,.08);border:1px solid rgba(159,227,190,.3);font-size:.9rem;line-height:1.45}
 .switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:#9FE3BE;cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
 .first-box{background:rgba(233,165,74,.12);border:1px solid rgba(233,165,74,.4);border-radius:12px;padding:12px 14px;margin:10px 0;line-height:1.5;font-size:.9rem}
 .qr-wrap{background:#fff;border-radius:12px;padding:10px;width:180px;margin:12px auto}
@@ -136,7 +137,14 @@ input::placeholder{color:rgba(218,241,222,.4)}
   <div id="joinScreen" class="screen active">
     <div class="invite-note" id="inviteNote" style="display:none"></div>
     <label>Группа</label>
-    <select id="groupSelect"><option value="">Загрузка...</option></select>
+    <input type="text" id="groupInput" list="groupList" placeholder="Начни вводить номер, например 128" autocomplete="off" autocapitalize="off">
+    <datalist id="groupList"></datalist>
+    <select id="groupSelect" style="display:none"><option value="">Загрузка...</option></select>
+    <div class="add-group" id="addGroupBox" style="display:none">
+      <div>Группы <b id="addGroupName"></b> пока нет в списке.</div>
+      <button class="btn btn-sec" id="addGroupBtn" type="button">Добавить мою группу</button>
+      <div class="hint">Добавляй, только если это точно номер твоей группы в НГАСУ. Расписание мы подгрузим с сайта университета в течение 30 минут.</div>
+    </div>
     <label>Фамилия Имя Отчество</label>
     <input type="text" id="fullName" placeholder="Иванов Иван Иванович">
     <div class="hint">Вводи так же, как в журнале. Если тебя ещё нет в списке группы, одногруппники подтвердят твою заявку.</div>
@@ -148,16 +156,13 @@ input::placeholder{color:rgba(218,241,222,.4)}
     <div class="whoami" id="whoamiBox"></div>
     <div class="pending-note" id="pendingNote" style="display:none">Тебя пока нет в списке группы — после регистрации заявку подтвердит кто-то из одногруппников. До этого расписание и домашка будут скрыты.</div>
     <div id="signupFields">
-      <label>Придумай пароль</label>
-      <input type="password" id="pass1" placeholder="Минимум 6 символов" autocomplete="new-password">
-      <label>Повтори пароль</label>
-      <input type="password" id="pass2" placeholder="Ещё раз" autocomplete="new-password">
-      <div class="hint">Этот пароль понадобится, чтобы зайти с другого устройства — не забудь его.</div>
+      <div class="hint" style="margin-top:4px">Пароль придумывать не нужно: на этом устройстве вход запомнится. Если понадобится войти с другого телефона — пароль можно посмотреть в «Настройки → Пароль для входа».</div>
       <label class="consent"><input type="checkbox" id="consent"><span>Я принимаю <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a> и даю согласие на обработку персональных данных по <a href="privacy.html" target="_blank" rel="noopener">Политике конфиденциальности</a></span></label>
     </div>
     <div id="loginFields" style="display:none">
+      <div class="hint" style="margin-top:4px">Ты уже зарегистрирован(а) на другом устройстве. Открой там «Настройки → Пароль для входа» и введи его здесь.</div>
       <label>Пароль</label>
-      <input type="password" id="passLogin" placeholder="Тот, что придумал(а) при регистрации" autocomplete="current-password">
+      <input type="password" id="passLogin" placeholder="Пароль из настроек" autocomplete="current-password">
     </div>
     <button class="btn" id="passSubmitBtn">Войти</button>
     <div class="msg" id="passMsg"></div>
@@ -225,18 +230,47 @@ input::placeholder{color:rgba(218,241,222,.4)}
   var pendingStatus = "approved";
   var pendingGroupId = null, pendingName = null, pendingEmail = null, pendingIsClaimed = null;
 
+  var groupsByKey = {};
+  function gkey(n){ return String(n || "").replace(/\s+/g, "").toUpperCase(); }
   async function loadGroups(){
     var sel = document.getElementById("groupSelect");
-    // Only groups that are open for sign-up (groups.listed). Falls back to
-    // all groups if that column doesn't exist yet.
-    var res = await sb.from("groups").select("id,name").eq("listed", true).order("name");
-    if(res.error) res = await sb.from("groups").select("id,name").order("name");
-    if(res.error || !res.data || !res.data.length){
-      sel.innerHTML = '<option value="">Групп пока нет</option>';
+    // Группы, открытые для регистрации (groups.listed). Если колонки ещё нет — все.
+    var res = await sb.from("groups").select("id,name").eq("listed", true).order("name").limit(5000);
+    if(res.error) res = await sb.from("groups").select("id,name").order("name").limit(5000);
+    var rows = res.data || [];
+    groupsByKey = {};
+    rows.forEach(function(g){ groupsByKey[gkey(g.name)] = g; });
+    sel.innerHTML = '<option value=""></option>' + rows.map(function(g){ return '<option value="'+g.id+'">'+g.name+'</option>'; }).join("");
+    document.getElementById("groupList").innerHTML = rows.map(function(g){ return '<option value="'+String(g.name).replace(/"/g,"&quot;")+'">'; }).join("");
+    syncGroupInput();
+  }
+  function syncGroupInput(){
+    var v = document.getElementById("groupInput").value, g = groupsByKey[gkey(v)];
+    document.getElementById("groupSelect").value = g ? g.id : "";
+    document.getElementById("addGroupBox").style.display = "none";
+  }
+  document.getElementById("groupInput").addEventListener("input", syncGroupInput);
+  document.getElementById("addGroupBtn").onclick = async function(){
+    var v = document.getElementById("groupInput").value.trim(), btn = this;
+    btn.disabled = true; btn.textContent = "Добавляем...";
+    var r = await sb.rpc("add_group", { p_name: v });
+    btn.disabled = false; btn.textContent = "Добавить мою группу";
+    if(r.error){
+      var m = r.error.message || "";
+      showMsg(/bad_group_name/.test(m) ? "Похоже, это не номер группы. Введи номер как в расписании, например 128 или 114а."
+            : /too_many/.test(m) ? "Сейчас добавляют слишком много групп. Попробуй через час." : "Не получилось: " + m);
       return;
     }
-    sel.innerHTML = res.data.map(function(g){ return '<option value="'+g.id+'">'+g.name+'</option>'; }).join("");
-  }
+    var g = r.data && r.data[0];
+    if(!g) return;
+    groupsByKey[gkey(g.name)] = g;
+    var sel = document.getElementById("groupSelect"), o = document.createElement("option");
+    o.value = g.id; o.textContent = g.name; sel.appendChild(o); sel.value = g.id;
+    document.getElementById("groupInput").value = g.name;
+    document.getElementById("addGroupBox").style.display = "none";
+    clearMsg();
+    document.getElementById("findBtn").click();
+  };
 
   async function applyInvite(){
     if(!inviteCode) return;
@@ -250,6 +284,8 @@ input::placeholder{color:rgba(218,241,222,.4)}
       sel.appendChild(opt);
     }
     sel.value = r.data.id;
+    groupsByKey[gkey(r.data.name)] = r.data;
+    document.getElementById("groupInput").value = r.data.name;
     var note = document.getElementById("inviteNote");
     note.textContent = "Тебя пригласили в группу " + r.data.name;
     note.style.display = "block";
@@ -259,7 +295,13 @@ input::placeholder{color:rgba(218,241,222,.4)}
     clearMsg();
     var groupId = document.getElementById("groupSelect").value;
     var name = document.getElementById("fullName").value.trim();
-    if(!groupId){ showMsg("Выбери группу"); return; }
+    if(!groupId){
+      var typed = document.getElementById("groupInput").value.trim();
+      if(!typed){ showMsg("Введи номер своей группы"); return; }
+      document.getElementById("addGroupName").textContent = "«" + typed + "»";
+      document.getElementById("addGroupBox").style.display = "block";
+      return;
+    }
     if(!name || name.split(/\s+/).length < 2){ showMsg("Введи полное ФИО, как в журнале"); return; }
 
     var btn = document.getElementById("findBtn");
@@ -300,6 +342,16 @@ input::placeholder{color:rgba(218,241,222,.4)}
     }
   };
 
+  // Пароль для входа с других устройств: создаётся автоматически и хранится
+  // только на этом устройстве; посмотреть — «Настройки → Пароль для входа».
+  function makePw(){
+    var abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", a = new Uint32Array(12), out = "";
+    crypto.getRandomValues(a);
+    for(var i = 0; i < 12; i++){ out += abc[a[i] % abc.length]; if(i === 3 || i === 7) out += "-"; }
+    return out;
+  }
+  function rememberPw(uid, pw){ try{ if(uid && pw) localStorage.setItem("domashka_pw_" + uid, pw); }catch(e){} }
+
   document.getElementById("backLink").onclick = function(){
     document.getElementById("passMsg").className = "msg";
     showScreen("joinScreen");
@@ -320,9 +372,10 @@ input::placeholder{color:rgba(218,241,222,.4)}
       try{
         var signIn = await sb.auth.signInWithPassword({ email: pendingEmail, password: password });
         if(signIn.error){
-          showPassMsg("Неверный пароль. Если забыл(а) — обратись к старосте, он сможет сбросить.");
+          showPassMsg("Неверный пароль. Посмотри его в «Настройки → Пароль для входа» на устройстве, где ты уже входил(а).");
           return;
         }
+        rememberPw(signIn.data && signIn.data.user && signIn.data.user.id, password);
         goToApp();
       } catch(e){
         showPassMsg("Что-то пошло не так: " + e.message);
@@ -332,11 +385,8 @@ input::placeholder{color:rgba(218,241,222,.4)}
       return;
     }
 
-    // First-time registration.
-    var p1 = document.getElementById("pass1").value;
-    var p2 = document.getElementById("pass2").value;
-    if(p1.length < 6){ showPassMsg("Пароль — минимум 6 символов"); return; }
-    if(p1 !== p2){ showPassMsg("Пароли не совпадают"); return; }
+    // First-time registration: пароль создаём сами и запоминаем на устройстве.
+    var p1 = makePw();
     if(!document.getElementById("consent").checked){ showPassMsg("Чтобы зарегистрироваться, отметь согласие с соглашением и политикой"); return; }
 
     btn.disabled = true; btn.textContent = "Регистрируем...";
@@ -344,6 +394,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
       var signUp = await sb.auth.signUp({ email: pendingEmail, password: p1 });
       if(signUp.error){ showPassMsg("Ошибка регистрации: " + signUp.error.message); return; }
       session = signUp.data.session;
+      rememberPw(signUp.data.user && signUp.data.user.id, p1);
       if(!session){
         // Some Supabase Auth settings require email confirmation even for
         // fake addresses - if so, sign in immediately with the same
