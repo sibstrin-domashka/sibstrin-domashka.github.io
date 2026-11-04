@@ -256,6 +256,13 @@ td.slot.current-slot,td.slot.has.current-slot{background:rgba(224,138,60,.20);bo
 .chg-line.cancelled{color:var(--danger)} .chg-line.substitute,.chg-line.online{color:var(--warn)}
 .chg-info.cancelled .v{color:var(--danger)} .chg-info.substitute .v,.chg-info.online .v{color:var(--warn)}
 .share-row{display:flex;gap:6px;flex-wrap:wrap}
+.sched-notice{max-width:760px;margin:0 auto 12px;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:rgba(91,208,168,.12);border:1px solid rgba(91,208,168,.4);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.sched-notice.problem{background:rgba(232,135,30,.14);border-color:rgba(232,135,30,.45)}
+.sched-notice .sn-ic{font-size:1.5rem;line-height:1;flex-shrink:0}
+.sched-notice .sn-ic.spin{animation:snSpin 2s linear infinite;display:inline-block}
+.sched-notice b{display:block;font-size:1rem;margin-bottom:3px}
+.sched-notice span{font-size:.86rem;color:var(--text-secondary);line-height:1.45}
+@keyframes snSpin{to{transform:rotate(360deg)}}
 .ref-card{max-width:760px;margin:0 auto 12px;display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:14px;cursor:pointer;
   background:linear-gradient(135deg,rgba(91,208,168,.16),rgba(91,208,168,.04)),var(--surface);border:1px solid rgba(91,208,168,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .ref-card .rc-main{flex:1;min-width:0}
@@ -374,6 +381,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
 <div id="errBox"></div>
 <main>
   <div class="weeks" id="weeks"></div>
+  <div id="schedNotice" class="sched-notice" style="display:none"></div>
   <div id="area"></div>
   <div id="litScreen" style="display:none"></div>
   <div id="teachersScreen" style="display:none"></div>
@@ -1019,8 +1027,8 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       console.log("[sync] schedule_slots rows for my group:", (slotsRes.data||[]).length);
       if(!slotsRes.data || !slotsRes.data.length){
         console.warn("[sync] zero schedule rows for group_id", myGroupId, "- either the scraper hasn't written this group yet, or group_id mismatch");
-        toast("В базе пока нет расписания для твоей группы");
-      }
+        showScheduleNotice();
+      } else hideScheduleNotice();
 
       slotIdByKey={};
       (slotsRes.data||[]).forEach(function(r){
@@ -1045,6 +1053,31 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       console.error("[sync] failed:", e);
       toast("Не удалось обновить: "+e.message);
     }
+  }
+
+  // ---------- «Расписание загружается» — пока сборщик не принёс расписание группы ----------
+  var schedPoll=null;
+  function hideScheduleNotice(){ var n=document.getElementById("schedNotice"); if(n) n.style.display="none"; if(schedPoll){ clearInterval(schedPoll); schedPoll=null; } }
+  async function showScheduleNotice(){
+    var n=document.getElementById("schedNotice"); if(!n || !sb) return;
+    var st=null;
+    try{ var r=await sb.rpc("my_schedule_status"); st=r.data&&r.data[0]; }catch(e){}
+    var state=st?st.state:"loading";
+    if(state==="ready"){ hideScheduleNotice(); return; }
+    if(state==="problem"){
+      n.className="sched-notice problem";
+      n.innerHTML='<div class="sn-ic">🛠</div><div><b>Расписание пока не загрузилось</b><span>С сайта университета не получилось забрать расписание вашей группы. Мы уже знаем об этом и разбираемся — обычно это решается в течение дня. Домашние задания и всё остальное работают.</span></div>';
+    } else {
+      n.className="sched-notice";
+      n.innerHTML='<div class="sn-ic spin">⏳</div><div><b>Загружаем расписание вашей группы</b><span>Мы забираем его с сайта университета — это занимает <b style="display:inline">до 30 минут</b>. Можно закрыть приложение: расписание появится само.</span></div>';
+    }
+    n.style.display="flex";
+    if(!schedPoll) schedPoll=setInterval(async function(){
+      try{
+        var r=await sb.rpc("my_schedule_status"), s2=r.data&&r.data[0];
+        if(s2 && s2.has_schedule){ hideScheduleNotice(); syncFromSupabase(true); }
+      }catch(e){}
+    }, 120000);
   }
 
   function render(){

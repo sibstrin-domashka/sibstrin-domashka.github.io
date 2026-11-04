@@ -305,6 +305,13 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
   pointer-events:none; /* never block buttons under it, even while fading */
 }
 .toast.show{opacity:1}
+.sched-notice{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;margin:0 0 12px;background:rgba(91,208,168,.12);border:1px solid rgba(91,208,168,.4)}
+.sched-notice.problem{background:rgba(232,135,30,.14);border-color:rgba(232,135,30,.45)}
+.sched-notice .sn-ic{font-size:1.5rem;line-height:1;flex-shrink:0}
+.sched-notice .sn-ic.spin{animation:snSpin 2s linear infinite;display:inline-block}
+.sched-notice b{display:block;font-size:1rem;margin-bottom:3px}
+.sched-notice span{font-size:.86rem;opacity:.8;line-height:1.45}
+@keyframes snSpin{to{transform:rotate(360deg)}}
 </style>
 <link rel="stylesheet" href="design.css">
 </head>
@@ -341,6 +348,7 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
     </div>
 
     <div id="dvBanners"></div>
+    <div id="schedNotice" class="sched-notice" style="display:none"></div>
     <div id="adSlot"></div>
     <div id="dvList"></div>
   </div>
@@ -667,6 +675,7 @@ async function loadTeacherProfile(){
 
   await loadLessons();
   if(window.DomashkaAds) DomashkaAds.load(sb, "teachers").then(drawAd);
+  if(!lessonsCache.length) showScheduleNotice();
   dayViewAbsIndex = todayAbsIndex();   // after loading, so real lesson dates can be matched
   try{ var sv = localStorage.getItem("domashka_teacher_view"); if(["weeks", "lit", "journal", "plan"].indexOf(sv) !== -1) currentView = sv; }catch(e){}
   setView(currentView);
@@ -803,6 +812,28 @@ function mergeLessons(list){
   return out;
 }
 
+var schedPoll = null;
+async function showScheduleNotice(){
+  var n = document.getElementById("schedNotice"); if(!n) return;
+  var st = null;
+  try{ var r = await sb.rpc("my_schedule_status"); st = r.data && r.data[0]; }catch(e){}
+  var state = st ? st.state : "loading";
+  if(state === "ready"){ n.style.display = "none"; return; }
+  if(state === "problem"){
+    n.className = "sched-notice problem";
+    n.innerHTML = '<div class="sn-ic">🛠</div><div><b>Расписание пока не загрузилось</b><span>С сайта университета не получилось забрать ваше расписание. Мы уже разбираемся — обычно это решается в течение дня. Если у вас в этом семестре нет занятий, это сообщение можно не учитывать.</span></div>';
+  } else {
+    n.className = "sched-notice";
+    n.innerHTML = '<div class="sn-ic spin">⏳</div><div><b>Загружаем ваше расписание</b><span>Мы забираем его с сайта университета — это занимает до 30 минут. Можно закрыть приложение: пары появятся сами.</span></div>';
+  }
+  n.style.display = "flex";
+  if(!schedPoll) schedPoll = setInterval(async function(){
+    try{
+      var r = await sb.rpc("my_schedule_status"), s2 = r.data && r.data[0];
+      if(s2 && s2.has_schedule){ clearInterval(schedPoll); schedPoll = null; n.style.display = "none"; await loadLessons(); renderAll(); }
+    }catch(e){}
+  }, 120000);
+}
 function drawAd(){
   var slot = document.getElementById("adSlot"); if(!slot || !window.DomashkaAds) return;
   slot.innerHTML = DomashkaAds.html(); DomashkaAds.bind();

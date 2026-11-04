@@ -1,0 +1,63 @@
+name: Update schedule
+
+# Экономим капчи: собираем только то, что кому-то нужно.
+#  * Каждые 30 минут — проверка очереди: новая группа (зашёл первый студент)
+#    или новый преподаватель (вошёл в приложение). Если очередь пуста,
+#    браузер не открывается и капча не тратится.
+#  * Раз в неделю (понедельник, ~10:00 по Новосибирску) — обновление всех
+#    «живых» групп, всех вошедших преподавателей и списка групп.
+#  * Если что-то сломалось (капча, новая защита, кончились деньги) — на экране
+#    владельца появится красное объявление.
+#  * Ручной запуск из вкладки Actions = полное обновление.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+    - cron: "0 3 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    # Работает на ТВОЁМ компьютере (self-hosted runner): сайт университета
+    # не пускает облачные серверы GitHub.
+    runs-on: self-hosted
+
+    env:
+      SUPABASE_URL: "https://wsrrqwvemfliwzsqlkvg.supabase.co"
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RUCAPTCHA_KEY: ${{ secrets.RUCAPTCHA_KEY }}
+      MAX_CAPTCHAS_PER_DAY: "6"         # не больше 6 платных капч в сутки
+      RUN_MODE: ${{ (github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 * * 1') && 'weekly' || 'queue' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Что нужно собрать
+        id: plan
+        run: node scripts/run-plan.js --check
+
+      - name: Install Puppeteer and stealth plugin
+        if: steps.plan.outputs.has_work == 'true'
+        run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
+
+      - name: Собрать расписание
+        if: steps.plan.outputs.has_work == 'true'
+        run: node scripts/run-plan.js
+
+      - name: Upload debug pages
+        if: always() && steps.plan.outputs.has_work == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-pages
+          path: |
+            debug-page.html
+            debug-lecturer-page.html
+          if-no-files-found: ignore
+          retention-days: 7

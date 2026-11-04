@@ -85,6 +85,7 @@ input::placeholder{color:rgba(218,241,222,.4)}
 .role-tabs button.on{background:#8EB69B;color:#051F20}
 .btn.btn-sec{background:transparent;color:#9FE3BE;border:1.5px solid rgba(159,227,190,.55);margin-top:10px}
 .btn.btn-sec:disabled{opacity:.6}
+.switch.pulse{color:#fff;font-weight:700;text-decoration:underline}
 .switch{display:block;text-align:center;margin-top:14px;font-size:.88rem;color:#9FE3BE;cursor:pointer;background:none;border:none;width:100%;font-family:inherit}
 .first-box{background:rgba(233,165,74,.12);border:1px solid rgba(233,165,74,.4);border-radius:12px;padding:12px 14px;margin:10px 0;line-height:1.5;font-size:.9rem}
 .qr-wrap{background:#fff;border-radius:12px;padding:10px;width:180px;margin:12px auto}
@@ -117,18 +118,17 @@ input::placeholder{color:rgba(218,241,222,.4)}
     <input type="text" id="tCode" placeholder="Например: A1B2C3" autocapitalize="characters" autocomplete="one-time-code">
     <button class="btn" id="tLoginBtn">Войти</button>
     <div class="msg" id="tMsg"></div>
-    <button class="switch" id="toReq">Нет кода? Оставить заявку на доступ</button>
+    <button class="switch" id="toReq">Меня нет в реестре — подать заявку на добавление</button>
   </div>
   <div id="tReqScreen" class="screen">
     <div class="invite-note" id="reqInvite" style="display:none"></div>
-    <div class="hint" style="margin-top:0">Если вас нет в списке — оставьте заявку, код входа придёт на указанную почту, обычно в течение дня.</div>
+    <div class="hint" style="margin-top:0"><b>Заявка на добавление в реестр преподавателей.</b> Мы проверим заявку, и после одобрения код входа придёт на вашу рабочую почту НГАСУ — обычно в течение дня.</div>
     <label>Фамилия Имя Отчество</label>
     <input type="text" id="reqName" placeholder="Иванов Иван Иванович" autocomplete="name">
-    <label>Рабочая почта</label>
-    <input type="email" id="reqEmail" placeholder="ivanov@sibstrin.ru" autocomplete="email">
-    <label>Предметы (необязательно)</label>
+    <div class="hint" id="reqMailHint" style="display:none"></div>
+    <label>Кафедра или предметы (необязательно)</label>
     <input type="text" id="reqSubj" placeholder="История России">
-    <button class="btn" id="reqBtn">Отправить заявку</button>
+    <button class="btn" id="reqBtn">Подать заявку</button>
     <div class="msg" id="reqMsg"></div>
     <button class="switch" id="toTLogin">У меня уже есть код → войти</button>
   </div>
@@ -476,8 +476,10 @@ input::placeholder{color:rgba(218,241,222,.4)}
       btn.textContent = "Отправить ещё раз";
       document.getElementById("tCode").focus();
     } else if(st === "not_found" || st === "no_email"){
-      tMsg("tSendMsg", "Не нашли вас в списке преподавателей. Проверьте ФИО или оставьте заявку — код пришлём вручную.");
+      tMsg("tSendMsg", "Вашего ФИО нет в реестре преподавателей «Домашки». Проверьте написание или подайте заявку на добавление — ниже.");
       document.getElementById("reqName").value = name;
+      document.getElementById("reqName").dispatchEvent(new Event("input"));
+      document.getElementById("toReq").classList.add("pulse");
     } else if(st === "too_often"){
       tMsg("tSendMsg", "Письмо уже отправлено недавно. Подождите пару минут и проверьте почту, в том числе «Спам».");
     } else if(st === "bad_name"){
@@ -486,19 +488,36 @@ input::placeholder{color:rgba(218,241,222,.4)}
       tMsg("tSendMsg", "Не получилось отправить письмо. Попробуйте ещё раз через минуту.");
     }
   };
+  function guessMail(name){
+    var map={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya"};
+    function tr(w){ return String(w||"").toLowerCase().split("").map(function(c){ return map[c]!=null ? map[c] : (/[a-z0-9-]/.test(c) ? c : ""); }).join(""); }
+    var p=String(name||"").trim().split(/\s+/);
+    if(p.length<2 || !tr(p[0]) || !tr(p[1])) return "";
+    return tr(p[1]).charAt(0)+"."+tr(p[0])+"@sibstrin.ru";
+  }
+  document.getElementById("reqName").addEventListener("input", function(){
+    var m=guessMail(this.value), h=document.getElementById("reqMailHint");
+    h.style.display=m?"block":"none"; h.textContent=m?"Код придёт на: "+m:"";
+  });
   document.getElementById("reqBtn").onclick = async function(){
     var btn = this;
     var name = document.getElementById("reqName").value.trim().replace(/\s+/g, " ");
-    var email = document.getElementById("reqEmail").value.trim();
-    if(name.split(" ").length < 2){ tMsg("reqMsg", "Укажите ФИО полностью"); return; }
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ tMsg("reqMsg", "Проверьте почту"); return; }
+    if(name.split(" ").length < 2){ tMsg("reqMsg", "Укажите фамилию, имя и отчество полностью"); return; }
     btn.disabled = true;
-    var r = await tsb.from("teacher_requests").insert({ full_name:name, email:email, subjects:document.getElementById("reqSubj").value.trim() || null, invited_by_group:inviteGroup || null });
+    var r = await tsb.from("teacher_requests").insert({ full_name:name, subjects:document.getElementById("reqSubj").value.trim() || null, invited_by_group:inviteGroup || null });
     btn.disabled = false;
-    if(r.error){ tMsg("reqMsg", "Не отправилось: " + r.error.message); return; }
-    tMsg("reqMsg", "Заявка отправлена! Код входа придёт на " + email + ".", true);
+    if(r.error){
+      var m = r.error.message || "";
+      if(/already_listed/.test(m)) tMsg("reqMsg", "Вы уже есть в реестре. Вернитесь назад и нажмите «Получить код на почту».");
+      else if(/already_requested/.test(m)) tMsg("reqMsg", "Заявка с таким ФИО уже подана и ждёт проверки. Код придёт на почту после одобрения.");
+      else if(/too_many/.test(m)) tMsg("reqMsg", "Сейчас слишком много заявок. Попробуйте через час.");
+      else tMsg("reqMsg", "Не отправилось: " + m);
+      return;
+    }
+    tMsg("reqMsg", "Заявка отправлена! После проверки код входа придёт на " + (guessMail(name) || "вашу рабочую почту") + ".", true);
     btn.style.display = "none";
   };
+
   if(qp.get("role") === "teacher" || inviteGroup) setRole("teacher");
 
   function goToApp(){

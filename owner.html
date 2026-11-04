@@ -116,6 +116,14 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 .lit-row .lname{font-weight:600;font-size:.9rem}
 .lit-row .lsub{font-size:.78rem;color:var(--text-secondary)}
 .lit-row .del-btn{background:none;border:none;color:var(--danger);font-size:.8rem;cursor:pointer;flex-shrink:0}
+.scr-alert{border-radius:18px;padding:18px 18px 16px;margin:4px 0 16px;color:#fff;box-shadow:0 10px 30px rgba(200,30,30,.35);animation:scrPulse 1.6s ease-in-out infinite}
+.scr-alert.red{background:linear-gradient(135deg,#D7263D,#A4161A)}
+.scr-alert.orange{background:linear-gradient(135deg,#E8871E,#B85C00);animation:none;box-shadow:0 8px 24px rgba(184,92,0,.3)}
+.scr-alert h3{margin:0 0 6px;font-size:1.15rem;line-height:1.3;font-family:var(--font-display)}
+.scr-alert p{margin:4px 0;font-size:.92rem;line-height:1.45;opacity:.95}
+.scr-alert .scr-what{background:rgba(0,0,0,.18);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:.86rem;line-height:1.5}
+.scr-alert button{margin-top:12px;padding:9px 16px;border-radius:999px;border:none;background:#fff;color:#A4161A;font-weight:700;cursor:pointer;font-family:inherit}
+@keyframes scrPulse{0%,100%{box-shadow:0 10px 30px rgba(200,30,30,.35)}50%{box-shadow:0 0 0 6px rgba(215,38,61,.35),0 10px 30px rgba(200,30,30,.5)}}
 </style>
 </head>
 <body>
@@ -127,6 +135,8 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     </div>
     <div class="header-icon" id="refreshBtn">↻</div>
   </header>
+
+  <div id="scraperAlert" style="display:none"></div>
 
   <div class="hero">
     <div>
@@ -369,7 +379,53 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     listEl.innerHTML=h;
   }
 
+  // ---------- Сборщик расписания: красное объявление, если что-то сломалось ----------
+  var SCR_TITLES={
+    captcha:"🚨 Сайт вуза: капча не решается",
+    protection:"🚨 Сайт вуза сопротивляется — похоже на новую защиту",
+    no_balance:"🚨 Закончились деньги на rucaptcha",
+    site_changed:"🚨 Сайт вуза изменился — расписание не читается",
+    error:"🚨 Сборщик расписания сломался",
+    budget:"⚠️ Лимит капч на сегодня исчерпан",
+    offline:"⚠️ Компьютер со сборщиком не на связи"
+  };
+  var SCR_TODO={
+    captcha:"Открой GitHub → Actions → последний запуск «Update schedule» → скачай debug-pages и пришли мне вместе со скриншотом этого объявления — разберём новую капчу.",
+    protection:"Открой GitHub → Actions → последний запуск → debug-pages и пришли мне. Новые группы пока ждут, старое расписание у всех остаётся.",
+    no_balance:"Пополни баланс на rucaptcha.com. После пополнения всё соберётся само при следующем запуске (каждые 30 минут).",
+    site_changed:"Пришли мне debug-pages из последнего запуска в GitHub → Actions — поправим сборщик под новую страницу.",
+    error:"Открой GitHub → Actions → последний запуск «Update schedule» и пришли мне текст ошибки.",
+    budget:"Ничего страшного: остальное соберётся завтра. Если такое часто — подними MAX_CAPTCHAS_PER_DAY в update-schedule.yml.",
+    offline:"Включи компьютер со сборщиком и проверь, что программа runner запущена (GitHub → Settings → Actions → Runners должен быть «Idle»)."
+  };
+  async function checkScraper(){
+    var box=document.getElementById("scraperAlert");
+    var r=await sb.from("scraper_health").select("*").eq("id",1).maybeSingle();
+    if(r.error || !r.data){ box.style.display="none"; return; }
+    var h=r.data, kind=null, when=null, target="", text="";
+    var errOpen=h.last_error_at && (!h.last_ok_at || new Date(h.last_error_at)>new Date(h.last_ok_at));
+    if(errOpen && !(h.acknowledged_at && new Date(h.acknowledged_at)>new Date(h.last_error_at))){
+      kind=h.last_error_kind||"error"; when=h.last_error_at; target=h.last_error_target||""; text=h.last_error_text||"";
+    } else if(h.last_check_at && Date.now()-new Date(h.last_check_at).getTime()>3*3600*1000){
+      kind="offline"; when=h.last_check_at; text="Сборщик не выходил на связь больше 3 часов — новые группы не получат расписание.";
+    }
+    if(!kind){ box.style.display="none"; return; }
+    var red=["budget","offline"].indexOf(kind)<0;
+    box.className="scr-alert "+(red?"red":"orange");
+    box.innerHTML='<h3>'+SCR_TITLES[kind]+'</h3>'+
+      '<p>'+esc(text)+(target?' <b>('+esc(target)+')</b>':'')+'</p>'+
+      '<p style="font-size:.8rem;opacity:.85">'+(kind==="offline"?'Последний раз на связи: ':'Когда: ')+new Date(when).toLocaleString("ru-RU")+(h.fail_streak>1&&kind!=="offline"?' · неудач подряд: '+h.fail_streak:'')+'</p>'+
+      '<div class="scr-what"><b>Что делать:</b> '+SCR_TODO[kind]+'</div>'+
+      (kind!=="offline"?'<button id="scrAck">Понял, разбираюсь — скрыть</button>':'');
+    box.style.display="block";
+    var ack=document.getElementById("scrAck");
+    if(ack) ack.onclick=async function(){ await sb.from("scraper_health").update({acknowledged_at:new Date().toISOString()}).eq("id",1); checkScraper(); };
+  }
+  setInterval(function(){ checkScraper(); }, 60000);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) checkScraper(); });
+
   async function loadOwnerExtras(){
+    checkScraper();
     if(window.DomashkaSettings){
       ["idea","app","report"].forEach(function(k){
         DomashkaSettings.inboxCount(k).then(function(n){ document.getElementById(k==="idea"?"cIdea":k==="app"?"cApp":"cRep").textContent = n ? n+" новых" : "нет новых"; });
@@ -515,23 +571,37 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
     var r=await sb.from("teacher_requests").select("*").order("created_at",{ascending:false}).limit(50);
     if(r.error){ el.innerHTML='<div class="error-msg">Нужно запустить 20_scrape_queue_and_teacher_requests.sql ('+esc(r.error.message)+')</div>'; return; }
     var rows=r.data||[];
-    if(!rows.length){ el.innerHTML='<p class="hint-owner">Заявок пока нет. Студенты приглашают преподавателей через «Ещё → Моя группа».</p>'; return; }
-    el.innerHTML=rows.map(function(x){
-      return '<div class="lit-row"><div><div class="lname">'+esc(x.full_name)+'</div><div class="lsub">'+esc(x.email)+(x.subjects?' · '+esc(x.subjects):'')+(x.invited_by_group?' · пригласила группа '+esc(x.invited_by_group):'')+' · '+fmtDate(x.created_at)+'</div></div>'+
-        (x.status==='new'?'<button class="btn-mini" data-grant="'+x.id+'">Выдать код</button>':'<span class="lsub">'+(x.status==='sent'?'код выдан':'отклонено')+'</span>')+'</div>';
+    if(!rows.length){ el.innerHTML='<p class="hint-owner">Заявок пока нет. Их подают преподаватели, которых нет в реестре: экран входа → «Я преподаватель» → «Подать заявку на добавление».</p>'; return; }
+    var nNew=rows.filter(function(x){ return x.status==="new"; }).length;
+    el.innerHTML='<p class="hint-owner">Проверь, что такой преподаватель есть в НГАСУ (например, на сайте вуза). «Принять» — добавит в реестр и сразу отправит письмо «Заявка одобрена» с кодом. «Отклонить» — ничего не отправит.'+(nNew?' Новых: <b>'+nNew+'</b>.':'')+'</p>'+rows.map(function(x){
+      var st=x.status==="new"?"":(x.status==="sent"?"✅ принята":"✖ отклонена");
+      return '<div class="lit-row" style="flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:200px"><div class="lname">'+esc(x.full_name)+'</div><div class="lsub">'+(x.subjects?esc(x.subjects)+' · ':'')+(x.invited_by_group?'пригласила группа '+esc(x.invited_by_group)+' · ':'')+fmtDate(x.created_at)+(st?' · '+st+' · '+esc(x.email):'')+'</div></div>'+
+        (x.status==='new'
+          ? '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%"><input data-mail="'+x.id+'" value="'+esc(x.email||"")+'" style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);font-family:inherit;background:var(--bg-elevated);color:var(--text-primary)">'+
+            '<button class="btn-mini" data-ok="'+x.id+'">Принять</button><button class="btn-mini" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border)" data-no="'+x.id+'">Отклонить</button></div>'
+          : '')+'</div>';
     }).join("");
-    el.querySelectorAll("[data-grant]").forEach(function(b){ b.onclick=async function(){
-      b.disabled=true;
-      var g=await sb.rpc("owner_grant_teacher",{p_request:b.getAttribute("data-grant")});
-      if(g.error){ alertBox("Ошибка: "+g.error.message); b.disabled=false; return; }
-      var t=(g.data||[])[0];
-      var site=location.href.replace(/[^\/]*([?#].*)?$/,"");
-      var body="Здравствуйте, "+t.full_name+"!\n\nВаш доступ к «Домашке» готов.\n\nВход: "+site+"auth.html?role=teacher\nФИО: "+t.full_name+"\nКод доступа: "+t.code+"\n\nЕсли возникнут вопросы — просто ответьте на это письмо.\n\nКоманда «Домашки»";
-      location.href="mailto:"+encodeURIComponent(t.email)+"?subject="+encodeURIComponent("Ваш доступ к «Домашке»")+"&body="+encodeURIComponent(body);
+    el.querySelectorAll("[data-ok]").forEach(function(b){ b.onclick=async function(){
+      var id=b.getAttribute("data-ok"), mail=el.querySelector('[data-mail="'+id+'"]').value.trim();
+      b.disabled=true; b.textContent="Отправляем...";
+      var sess=(await sb.auth.getSession()).data.session;
+      var res=null;
+      try{
+        var f=await fetch(SUPABASE_URL+"/functions/v1/teacher-code",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+(sess?sess.access_token:SUPABASE_ANON_KEY)},body:JSON.stringify({action:"approve",request_id:id,email:mail})});
+        res=await f.json().catch(function(){ return null; });
+      }catch(e){}
+      if(res && res.status==="ok"){ await loadTeacherRequests(); alertBox("✅ "+res.full_name+" добавлен(а) в реестр, письмо с кодом отправлено на "+res.email+".", true); }
+      else if(res && res.status==="send_failed"){ await loadTeacherRequests(); alertBox("Преподаватель добавлен, но письмо не ушло (проверь почту в настройках функции). Код: "+res.code+" — можно отправить вручную на "+res.email+"."); }
+      else { alertBox("Не получилось: "+((res&&(res.message||res.status))||"нет связи с функцией teacher-code")); b.disabled=false; b.textContent="Принять"; }
+    }; });
+    el.querySelectorAll("[data-no]").forEach(function(b){ b.onclick=async function(){
+      if(!confirm("Отклонить заявку? Письмо отправлено не будет.")) return;
+      var r=await sb.rpc("owner_reject_teacher",{p_request:b.getAttribute("data-no")});
+      if(r.error){ alertBox("Ошибка: "+r.error.message); return; }
       loadTeacherRequests();
     }; });
   }
-  function alertBox(m){ var d=document.createElement("div"); d.className="error-msg"; d.textContent=m; document.getElementById("treqList").prepend(d); }
+  function alertBox(m, ok){ var d=document.createElement("div"); d.className=ok?"hint-owner":"error-msg"; if(ok) d.style.cssText="background:rgba(91,208,168,.12);border:1px solid rgba(91,208,168,.4);padding:10px 12px;border-radius:12px;margin-bottom:8px"; d.textContent=m; document.getElementById("treqList").prepend(d); setTimeout(function(){ d.remove(); }, 15000); }
   document.getElementById("ibIdea").onclick=function(){ DomashkaSettings.inbox("idea"); };
   document.getElementById("ibApp").onclick=function(){ DomashkaSettings.inbox("app"); };
   document.getElementById("ibRep").onclick=function(){ DomashkaSettings.inbox("report"); };
