@@ -427,7 +427,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
     <p id="payText">Пробный период или подписка закончились. Оформи подписку — доступ откроется сразу.</p>
     <a class="btn-blue" id="payBuy" href="pay.html" target="_blank" rel="noopener" style="display:block;padding:12px;text-decoration:none;border-radius:10px">Оформить подписку</a>
     <button class="btn-outline btn-sm" id="payKey" style="margin-top:10px;width:100%">Проверить ещё раз</button>
-    <button class="btn-outline btn-sm" id="payInvite" style="margin-top:10px;width:100%">🎁 Бесплатный семестр за приглашения</button>
+    <button class="btn-outline btn-sm" id="payInvite" style="margin-top:10px;width:100%;display:none">🎁 Бесплатный семестр за приглашения</button>
     <button class="btn-outline btn-sm" id="payLogout" style="margin-top:10px">Выйти</button>
   </div>
 </div>
@@ -1081,7 +1081,6 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
       handleSettingsParam();
       checkAccess();
       refreshMoreBadge();
-      loadReferral();
       if(window.DomashkaAds) DomashkaAds.load(sb, "students").then(function(a){ if(a) render(); });
       if(!window.__repliesChecked && window.DomashkaSettings){ window.__repliesChecked=true; setTimeout(function(){ DomashkaSettings.checkReplies(); }, 2500); }
       if(showFeedback) toast("Расписание обновлено");
@@ -2187,6 +2186,7 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
   }
   function fmtShortDate(iso){ var d=new Date(iso); return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear(); }
   function referralCardHtml(){
+    return "";   // акции «семестр бесплатно за приглашения» убраны; акции теперь — через рекламу владельца
     if(!refStatus || myIsOwner) return "";
     var g=Math.min(refStatus.groups_active||0,9), t=Math.min(refStatus.teachers||0,6);
     var free=refStatus.free_until && new Date(refStatus.free_until)>new Date();
@@ -2809,7 +2809,6 @@ header{padding-top:calc(11px + env(safe-area-inset-top,0px))}
   if(window.DomashkaTabbar) DomashkaTabbar.mount([
     { key:"home", label:"День", icon:"calendar", onClick:function(){ closeSideScreens(); if(viewMode!=="day"){ viewMode="day"; dayViewAbsIndex=null; try{localStorage.setItem("domashka_view_v1",viewMode);}catch(e){} render(); } DomashkaTabbar.setActive("home"); window.scrollTo(0,0); } },
     { key:"weeks", label:"2 недели", icon:"grid", onClick:function(){ closeSideScreens(); if(viewMode!=="grid"){ viewMode="grid"; try{localStorage.setItem("domashka_view_v1",viewMode);}catch(e){} render(); } DomashkaTabbar.setActive("weeks"); window.scrollTo(0,0); } },
-    { key:"qr", label:"Отметиться", icon:"qr", center:true, onClick:function(){ document.getElementById("scanBtn").click(); } },
     { key:"grades", label:"Оценки", icon:"chart", onClick:function(){ if(!myMembership){ toast("Оценки появятся, когда тебя подтвердят в группе"); return; } openMyGrades(); } },
     { key:"more", label:"Ещё", icon:"more", onClick:openMore }
   ], viewMode==="day"?"home":"weeks");

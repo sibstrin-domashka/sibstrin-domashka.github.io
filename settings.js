@@ -187,8 +187,8 @@
     h += row({ id:"dsLogout", icon:"🚪", title:"Выйти из аккаунта" });
     h += "</div></div>";
 
-    h += '<div class="ds-sec"><h4>Оформление</h4><div class="ds-list">';
-    if(T){
+    h += '<div class="ds-sec"><h4>' + (T && T.fixed ? "Язык и уведомления" : "Оформление") + '</h4><div class="ds-list">';
+    if(T && !T.fixed){
       var opt = T.list().map(function(t){ return '<option value="' + t.key + '"' + (t.key === T.setting() ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("");
       h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">🖼️</span><span class="ds-t">Фон<small id="dsBgNow">Сейчас: ' + esc(T.activeName()) + '</small></span><select id="dsBg" aria-label="Фон">' + opt + "</select></div>";
       h += '<div class="ds-row" style="cursor:default"><span class="ds-ic">✨</span><span class="ds-t">Анимация фона<small>Снег, листья, салют</small></span>' + sw("dsFx", T.fx()) + "</div>";

@@ -438,7 +438,7 @@ td.slot .tag-chg.sub{background:var(--warn);color:#052421}
     <h3 id="hwModalTitle">Домашнее задание</h3>
     <div class="modal-sub" id="hwModalSub">—</div>
     <div class="lm-actions">
-      <button class="lm-act primary" id="lmQr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17.5 21H21v-3.5"/></svg><span>QR-отметка</span></button>
+      <button class="lm-act primary" id="lmQr" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17.5 21H21v-3.5"/></svg><span>QR-отметка</span></button>
       <button class="lm-act" id="lmChg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>Отмена / замена</span></button>
     </div>
     <div class="mtabs">
@@ -920,7 +920,6 @@ function openTeacherMore(){
 if(window.DomashkaTabbar) DomashkaTabbar.mount([
   { key:"day", label:"День", icon:"calendar", onClick:function(){ setView("day"); window.scrollTo(0,0); } },
   { key:"weeks", label:"2 недели", icon:"grid", onClick:function(){ setView("weeks"); window.scrollTo(0,0); } },
-  { key:"qr", label:"QR-отметка", icon:"qr", center:true, onClick:function(){ quickQr(); } },
   { key:"journal", label:"Журнал", icon:"journal", onClick:function(){ setView("journal"); window.scrollTo(0,0); } },
   { key:"more", label:"Ещё", icon:"more", onClick:openTeacherMore }
 ], "day");
