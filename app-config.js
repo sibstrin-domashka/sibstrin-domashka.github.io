@@ -26,7 +26,7 @@ window.DOMASHKA_CONFIG = {
   // Ниже менять не обязательно.
   appName: "Домашка",
   appVersion: "1.0.0",
-  legalDate: "28.10.2026",          // дата редакции документов
+  legalDate: "03.11.2026",          // дата редакции документов
   siteUrl: "https://sibstrin-domashka.github.io/"
 };
 
